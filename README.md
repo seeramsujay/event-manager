@@ -1,5 +1,7 @@
 # Plan Together: GenAI Event Planning Assistant
 
+[![CI](https://github.com/seeramsujay/event-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/seeramsujay/event-manager/actions/workflows/ci.yml)
+
 An assistant that helps people organize **weddings, birthdays and community events**. You describe your event (date, guests, budget, setting, vibe, priorities and needs) and it builds a plan with:
 
 - **Budget breakdown**: category amounts that add up exactly to your budget and shift toward what you care about most.
@@ -80,7 +82,7 @@ src/
   ai/ideas.js        Claude integration, prompt, output validation, fallback
   lib/               TTL/LRU cache, rate limiter
 public/              accessible static frontend (HTML, CSS, vanilla JS)
-test/                node:test suites (unit + HTTP integration)
+test/                node:test suites (unit, HTTP integration, jsdom frontend)
 ```
 
 ## Running it
@@ -120,7 +122,7 @@ Without `ANTHROPIC_API_KEY` the app runs in **curated mode**: everything works, 
 - The rules engine is pure and runs in about a millisecond. The single LLM call is cached, uses low effort, and is skipped when AI is turned off.
 - Static assets are held in memory, and the frontend has no framework or build step.
 
-**Testing**: 44 tests (`node:test`) cover the budget math, timeline compression, conditional tasks and vendors, insights, validation edge cases, the AI path with a mocked client (success, caching, refusals, bad JSON, oversized output), the cache, the rate limiter and the full HTTP stack (headers, error codes, traversal, rate limiting). Line coverage is about 98%.
+**Testing**: 49 tests (`node:test`) cover the budget math, timeline compression, conditional tasks and vendors, insights, validation edge cases, the AI path with a mocked client (success, caching, refusals, bad JSON, oversized output), the cache, the rate limiter and the full HTTP stack (headers, error codes, traversal, rate limiting). Frontend tests load the real page in jsdom and check validation messages, focus handling, plan rendering, saved checklist progress, and that AI text containing HTML is shown as plain text. GitHub Actions runs the suite on Node 22 and 24 for every push. Line coverage is about 98%.
 
 **Accessibility**
 - Semantic landmarks, a skip link, real `<label>`s, `fieldset`/`legend` groups and a table with headers.

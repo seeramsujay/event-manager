@@ -40,6 +40,7 @@ test("without a client the service serves curated ideas", async () => {
   assert.equal(service.enabled, false);
   assert.equal(result.source, "curated");
   assert.equal(result.ideas.themes.length, 3);
+  assert.match(result.notice, /not configured/);
 });
 
 test("curated ideas rank themes by vibe and respect alcohol-free", () => {
