@@ -8,12 +8,13 @@ const LEVEL_ORDER = { critical: 0, warning: 1, info: 2 };
 const rules = [
   ({ ctx, timeline }) => {
     if (ctx.leadRatio >= 1) return null;
-    const weeks = Math.max(1, Math.floor(timeline.leadDays / 7));
+    const days = timeline.leadDays;
+    const available = days < 14 ? `${days} day${days === 1 ? "" : "s"}` : `about ${Math.floor(days / 7)} weeks`;
     const ideal = Math.round(timeline.idealLeadDays / 7);
     return {
       level: ctx.leadRatio < 0.35 ? "critical" : "warning",
       title: "Compressed timeline",
-      detail: `You have about ${weeks} week(s); ${ideal} is typical. Deadlines were scaled to fit — book the essential vendors first and accept simpler options for the rest.`,
+      detail: `You have ${available}; ${ideal} weeks is typical. Deadlines were scaled to fit — book the essential vendors first and accept simpler options for the rest.`,
     };
   },
   ({ ctx }) =>

@@ -87,6 +87,12 @@ test("lean budgets trigger warnings and DIY nudges", () => {
   assert.ok(plan.vendors.filter((v) => v.priority === "optional").every((v) => v.tip.includes("DIY")));
 });
 
+test("events days away get a day-count timeline warning", () => {
+  const plan = buildPlan(request({ eventType: "birthday", date: "2026-01-04", budget: 2000, guestCount: 20 }), { now: NOW });
+  const insight = plan.insights.find((item) => item.title === "Compressed timeline");
+  assert.match(insight.detail, /^You have 3 days; 8 weeks is typical/);
+});
+
 test("Saturday weddings get an off-peak tip", () => {
   const plan = buildPlan(request({ date: "2027-01-02" }), { now: NOW }); // a Saturday
   assert.ok(plan.insights.some((insight) => insight.title === "Saturday premium"));

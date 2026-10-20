@@ -4,6 +4,7 @@
 // so AI or user text can't inject markup.
 
 const form = document.getElementById("plan-form");
+const fields = form.elements; // named access via elements avoids clashes with form properties
 const statusEl = document.getElementById("status");
 const submitBtn = document.getElementById("submit-btn");
 const results = document.getElementById("results");
@@ -51,9 +52,9 @@ function todayIso() {
 }
 
 function syncEventType() {
-  const isBirthday = form.eventType.value === "birthday";
+  const isBirthday = fields.eventType.value === "birthday";
   ageField.hidden = !isBirthday;
-  if (!isBirthday) form.honoreeAge.value = "";
+  if (!isBirthday) fields.honoreeAge.value = "";
 }
 
 function readForm() {
@@ -78,7 +79,7 @@ function readForm() {
 
 function clearErrors() {
   for (const field of ERROR_FIELDS) {
-    form[field].removeAttribute("aria-invalid");
+    fields[field].removeAttribute("aria-invalid");
     const message = document.getElementById(`${field}-error`);
     message.hidden = true;
     message.textContent = "";
@@ -92,8 +93,8 @@ function showFieldErrors(details) {
     if (!target) continue;
     target.textContent = message;
     target.hidden = false;
-    form[field].setAttribute("aria-invalid", "true");
-    first ??= form[field];
+    fields[field].setAttribute("aria-invalid", "true");
+    first ??= fields[field];
   }
   first?.focus();
 }
@@ -297,9 +298,9 @@ function renderPlan(plan) {
 
 // ---- Wire up --------------------------------------------------------------
 
-form.date.min = todayIso();
+fields.date.min = todayIso();
 form.addEventListener("submit", onSubmit);
-for (const radio of form.eventType) radio.addEventListener("change", syncEventType);
+for (const radio of fields.eventType) radio.addEventListener("change", syncEventType);
 notes.addEventListener("input", () => { notesCount.textContent = `${notes.value.length} / 500 characters`; });
 document.getElementById("print-btn").addEventListener("click", () => window.print());
 syncEventType();

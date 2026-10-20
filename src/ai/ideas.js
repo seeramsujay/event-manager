@@ -151,8 +151,11 @@ export function createIdeasService({ client, model = DEFAULT_MODEL, cache = new 
     enabled: Boolean(client),
 
     async getIdeas(input, plan) {
-      if (!client || !input.useAI) {
+      if (!input.useAI) {
         return { source: "curated", ideas: curatedIdeas(input, plan) };
+      }
+      if (!client) {
+        return { source: "curated", notice: "AI ideas are not configured on this server; showing curated ideas instead.", ideas: curatedIdeas(input, plan) };
       }
       const key = cacheKey(input, model);
       const cached = cache.get(key);
