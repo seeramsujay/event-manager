@@ -25,14 +25,23 @@ const rules = [
           detail: "Consider a shorter guest list, a daytime or weekday date, or a potluck/buffet format. The plan already favors essentials.",
         }
       : null,
-  ({ ctx }) =>
-    ctx.setting !== "indoor"
-      ? {
-          level: ctx.setting === "outdoor" ? "warning" : "info",
-          title: "Weather backup needed",
-          detail: "A tent or covered backup space is in your checklist and the contingency reserve is higher to cover it. Check the forecast a week out.",
-        }
-      : null,
+  ({ ctx }) => {
+    if (ctx.setting === "outdoor") {
+      return {
+        level: "warning",
+        title: "Weather backup needed",
+        detail: "Plan for rain, heat and wind: shelter is in your checklist, the budget includes rentals and the contingency reserve is higher. Check the forecast a week out.",
+      };
+    }
+    if (ctx.setting === "hybrid") {
+      return {
+        level: "info",
+        title: "Weather backup needed",
+        detail: "Make sure the indoor space can hold everyone if the weather turns. A small rentals line is included for covers and outdoor gear.",
+      };
+    }
+    return null;
+  },
   ({ ctx }) =>
     ctx.guestCount >= LARGE_EVENT[ctx.eventType]
       ? {
@@ -97,6 +106,15 @@ const rules = [
 /** Minimum USD-equivalent food spend per guest before we warn. */
 const MIN_FOOD_PER_GUEST_USD = { wedding: 25, birthday: 8, community: 2 };
 
+/**
+ * Applies every rule to the plan context and returns the triggered insights,
+ * most severe first.
+ * @param {object} ctx       planning context from buildContext()
+ * @param {import("./index.js").Budget} budget
+ * @param {import("./index.js").Timeline} timeline
+ * @param {number} usdRate   value of one unit of the user's currency in USD
+ * @returns {import("./index.js").Insight[]}
+ */
 export function buildInsights(ctx, budget, timeline, usdRate) {
   const ruleCtx = { ...ctx, minFoodPerGuest: MIN_FOOD_PER_GUEST_USD[ctx.eventType] / usdRate };
   return rules

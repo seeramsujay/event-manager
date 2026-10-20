@@ -104,3 +104,16 @@ test("insights are ordered by severity", () => {
   const levels = plan.insights.map((insight) => order[insight.level]);
   assert.deepEqual(levels, [...levels].sort());
 });
+
+test("an event that is today in the user's time zone but yesterday in UTC plans as today", () => {
+  const plan = buildPlan(request({ date: "2025-12-31" }), { now: NOW });
+  assert.equal(plan.summary.daysToGo, 0);
+  const preparation = plan.timeline.tasks.filter((task) => task.phase !== "Wrap-up");
+  assert.ok(preparation.every((task) => task.dueDate === "2025-12-31"));
+  assert.ok(plan.vendors.every((vendor) => vendor.bookBy === "2025-12-31"));
+});
+
+test("defaults to the current clock", () => {
+  const nextYear = `${new Date().getUTCFullYear() + 1}-06-01`;
+  assert.ok(buildPlan(request({ date: nextYear })).summary.daysToGo > 0);
+});

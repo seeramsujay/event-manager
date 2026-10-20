@@ -76,6 +76,7 @@ export const EVENT_PROFILES = {
       { id: "w-weather", title: "Reserve a tent and confirm the bad-weather backup", weeksBefore: 12, when: needsWeatherPlan },
       { id: "w-invites", title: "Send invitations with RSVP deadline", weeksBefore: 12 },
       { id: "w-access", title: "Confirm step-free access, accessible restrooms and reserved seating", weeksBefore: 8, when: has("accessibility") },
+      { id: "w-kids", title: "Plan a kids' table with activities and a quiet corner", weeksBefore: 8, when: (ctx) => ctx.kidFriendly },
       { id: "w-menu", title: "Finalize menu, dietary needs and cake", weeksBefore: 8 },
       { id: "w-license", title: "Obtain marriage license (check local requirements)", weeksBefore: 6 },
       { id: "w-headcount", title: "Send final headcount and seating plan to caterer", weeksBefore: 4 },
@@ -146,6 +147,7 @@ export const EVENT_PROFILES = {
       { id: "supervision", name: "Activity staff / childcare", category: "entertainment", base: "recommended", bookWeeksBefore: 4, when: (ctx) => ctx.kidFriendly, tip: "Aim for at least one adult per 6–8 young children." },
       { id: "favors", name: "Party favors", category: "favors", base: "optional", bookWeeksBefore: 2, priority: (ctx) => (ctx.isKids ? "recommended" : "optional"), tip: "One useful item beats a bag of small plastic toys." },
       { id: "photographer", name: "Photographer", category: "photography", base: "optional", bookWeeksBefore: 4, tip: "Ask a friend to own photos for the first hour, or book a 2-hour package." },
+      { id: "canopy", name: "Canopy / shade rental", category: "rentals", base: "optional", bookWeeksBefore: 3, when: needsWeatherPlan, priority: (ctx) => (isOutdoor(ctx) ? "recommended" : "optional"), tip: "Shade and a rain cover keep the party going in any weather." },
       { id: "bartender", name: "Bartender", category: "catering", base: "optional", bookWeeksBefore: 3, when: (ctx) => !ctx.isKids && !ctx.considerations.includes("alcohol-free") && ctx.guestCount >= 30, tip: "A limited signature-cocktail menu keeps costs predictable." },
     ],
     ideas: {
