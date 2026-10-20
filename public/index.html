@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Plan weddings, birthdays and community events with budgets, timelines, vendor checklists and AI-personalized ideas.">
+  <title>Plan Together — Event Planning Assistant</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="wrap">
+      <h1>Plan Together</h1>
+      <p class="tagline">Your planning assistant for weddings, birthdays and community events.</p>
+    </div>
+  </header>
+
+  <main id="main" class="wrap">
+    <section aria-labelledby="form-heading" class="card" id="form-card">
+      <h2 id="form-heading">Tell us about your event</h2>
+      <p class="hint">Fields marked <span aria-hidden="true">*</span><span class="visually-hidden">with an asterisk</span> are required.</p>
+
+      <form id="plan-form" novalidate>
+        <fieldset class="event-types">
+          <legend>Event type <span aria-hidden="true">*</span></legend>
+          <label class="choice"><input type="radio" name="eventType" value="wedding" checked> Wedding</label>
+          <label class="choice"><input type="radio" name="eventType" value="birthday"> Birthday</label>
+          <label class="choice"><input type="radio" name="eventType" value="community"> Community event</label>
+        </fieldset>
+
+        <div class="grid">
+          <div class="field">
+            <label for="eventName">Event name</label>
+            <input id="eventName" name="eventName" maxlength="80" autocomplete="off" placeholder="e.g. Sam &amp; Alex's wedding">
+          </div>
+          <div class="field">
+            <label for="date">Event date <span aria-hidden="true">*</span></label>
+            <input id="date" name="date" type="date" required aria-describedby="date-error">
+            <p class="error" id="date-error" hidden></p>
+          </div>
+          <div class="field">
+            <label for="guestCount">Number of guests <span aria-hidden="true">*</span></label>
+            <input id="guestCount" name="guestCount" type="number" inputmode="numeric" min="1" max="5000" step="1" required value="100" aria-describedby="guestCount-error">
+            <p class="error" id="guestCount-error" hidden></p>
+          </div>
+          <div class="field budget-field">
+            <label for="budget">Total budget <span aria-hidden="true">*</span></label>
+            <div class="inline">
+              <input id="budget" name="budget" type="number" inputmode="decimal" min="50" step="any" required value="20000" aria-describedby="budget-error">
+              <label for="currency" class="visually-hidden">Currency</label>
+              <select id="currency" name="currency">
+                <option>USD</option><option>EUR</option><option>GBP</option><option>CAD</option><option>AUD</option><option>INR</option>
+              </select>
+            </div>
+            <p class="error" id="budget-error" hidden></p>
+          </div>
+          <div class="field">
+            <label for="setting">Setting</label>
+            <select id="setting" name="setting">
+              <option value="indoor">Indoor</option>
+              <option value="outdoor">Outdoor</option>
+              <option value="hybrid">Indoor + outdoor</option>
+            </select>
+          </div>
+          <div class="field" id="age-field" hidden>
+            <label for="honoreeAge">Age they are turning</label>
+            <input id="honoreeAge" name="honoreeAge" type="number" inputmode="numeric" min="0" max="120" step="1" aria-describedby="honoreeAge-error">
+            <p class="error" id="honoreeAge-error" hidden></p>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="vibe">Style or vibe</label>
+          <input id="vibe" name="vibe" maxlength="200" placeholder="e.g. rustic garden, relaxed, lots of dancing">
+        </div>
+
+        <fieldset>
+          <legend>What matters most? <span class="hint">(gets a bigger share of the budget)</span></legend>
+          <div class="chips">
+            <label class="choice"><input type="checkbox" name="priorities" value="venue"> Venue</label>
+            <label class="choice"><input type="checkbox" name="priorities" value="food"> Food</label>
+            <label class="choice"><input type="checkbox" name="priorities" value="decor"> Decor</label>
+            <label class="choice"><input type="checkbox" name="priorities" value="photography"> Photography</label>
+            <label class="choice"><input type="checkbox" name="priorities" value="entertainment"> Entertainment</label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Considerations</legend>
+          <div class="chips">
+            <label class="choice"><input type="checkbox" name="considerations" value="accessibility"> Accessibility needs</label>
+            <label class="choice"><input type="checkbox" name="considerations" value="sustainability"> Low waste</label>
+            <label class="choice"><input type="checkbox" name="considerations" value="alcohol-free"> Alcohol-free</label>
+            <label class="choice"><input type="checkbox" name="considerations" value="kid-friendly"> Kids attending</label>
+          </div>
+        </fieldset>
+
+        <div class="field">
+          <label for="notes">Anything else? <span class="hint">(dietary needs, traditions, ideas you love)</span></label>
+          <textarea id="notes" name="notes" rows="3" maxlength="500" aria-describedby="notes-count"></textarea>
+          <p class="hint" id="notes-count" aria-live="polite">0 / 500 characters</p>
+        </div>
+
+        <label class="choice toggle"><input type="checkbox" name="useAI" checked> Personalize ideas with AI</label>
+        <p class="hint">Only the event details above are sent to the AI. Don't include names, addresses or other personal data in free-text fields.</p>
+
+        <div class="actions">
+          <button type="submit" id="submit-btn">Create my plan</button>
+        </div>
+      </form>
+    </section>
+
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+
+    <section id="results" aria-labelledby="results-heading" hidden>
+      <div class="results-header">
+        <h2 id="results-heading" tabindex="-1">Your plan</h2>
+        <button type="button" class="secondary" id="print-btn">Print plan</button>
+      </div>
+      <div id="summary" class="summary"></div>
+
+      <section class="card" aria-labelledby="insights-heading" id="insights-section">
+        <h3 id="insights-heading">Things to know</h3>
+        <ul id="insights" class="insights"></ul>
+      </section>
+
+      <section class="card" aria-labelledby="budget-heading">
+        <h3 id="budget-heading">Budget breakdown</h3>
+        <p id="budget-meta" class="hint"></p>
+        <div class="table-wrap">
+          <table id="budget-table">
+            <caption class="visually-hidden">Suggested spend per category</caption>
+            <thead><tr><th scope="col">Category</th><th scope="col">Share</th><th scope="col" class="num">Amount</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="timeline-heading">
+        <h3 id="timeline-heading">Timeline</h3>
+        <p id="timeline-meta" class="hint"></p>
+        <div id="timeline"></div>
+      </section>
+
+      <section class="card" aria-labelledby="vendors-heading">
+        <h3 id="vendors-heading">Vendor checklist</h3>
+        <p class="hint">Tick vendors off as you book them — progress is saved in this browser. <span id="vendor-progress" aria-live="polite"></span></p>
+        <ul id="vendors" class="vendors"></ul>
+      </section>
+
+      <section class="card" aria-labelledby="ideas-heading">
+        <h3 id="ideas-heading">Personalized ideas</h3>
+        <p id="ideas-meta" class="hint"></p>
+        <div id="ideas"></div>
+      </section>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap"><p>Estimates are guidance only — always confirm prices, permits and requirements locally.</p></div>
+  </footer>
+</body>
+</html>

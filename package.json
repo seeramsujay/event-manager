@@ -1,0 +1,22 @@
+{
+  "name": "event-planner-ai",
+  "version": "1.0.0",
+  "description": "GenAI-powered planning assistant for weddings, birthdays and community events: budgets, timelines, vendor checklists and personalized ideas.",
+  "private": true,
+  "type": "module",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=22.9"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/server.js",
+    "dev": "node --watch --env-file-if-exists=.env src/server.js",
+    "test": "node --test",
+    "test:coverage": "node --test --experimental-test-coverage"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.131.0",
+    "zod": "4.6.5"
+  },
+  "license": "MIT"
+}
