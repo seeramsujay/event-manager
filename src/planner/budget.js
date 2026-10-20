@@ -1,10 +1,16 @@
 import { BUDGET_LABELS, PRIORITY_CATEGORIES, USD_RATES } from "./catalog.js";
 
 const PRIORITY_BOOST = 1.25;
-const OUTDOOR_RENTAL_SHARE = 0.06;
+/** Extra budget weight for tents and weather gear, by setting. */
+const RENTAL_SHARE = { indoor: 0, hybrid: 0.03, outdoor: 0.06 };
 const BASE_CONTINGENCY = 0.05;
 
-/** Classifies spend per guest (normalized to USD) as lean, moderate or premium. */
+/**
+ * Classifies spend per guest (normalized to USD) as lean, moderate or premium.
+ * @param {{ budget: number, guestCount: number, currency: string }} input
+ * @param {{ tiers: { lean: number, premium: number } }} profile
+ * @returns {"lean" | "moderate" | "premium"}
+ */
 export function budgetTier({ budget, guestCount, currency }, profile) {
   const perGuestUsd = (budget * USD_RATES[currency]) / guestCount;
   if (perGuestUsd < profile.tiers.lean) return "lean";
@@ -12,7 +18,12 @@ export function budgetTier({ budget, guestCount, currency }, profile) {
   return "moderate";
 }
 
-/** Riskier plans (outdoor, rushed) keep a larger reserve for surprises. */
+/**
+ * Riskier plans keep a larger reserve for surprises: +3% outdoors (weather),
+ * +2% when there is less than half the ideal planning time.
+ * @param {{ setting: string, leadRatio: number }} context
+ * @returns {number} share of the total budget, 0.05–0.10
+ */
 export function contingencyShare({ setting, leadRatio }) {
   let share = BASE_CONTINGENCY;
   if (setting === "outdoor") share += 0.03;
@@ -23,6 +34,9 @@ export function contingencyShare({ setting, leadRatio }) {
 /**
  * Splits whole currency units by share using the largest-remainder method,
  * so the parts always add up exactly to the total.
+ * @param {number} total   whole units to split
+ * @param {number[]} shares fractions summing to 1
+ * @returns {number[]} whole amounts, same order as `shares`
  */
 export function splitWhole(total, shares) {
   const raw = shares.map((share) => share * total);
@@ -37,12 +51,21 @@ export function splitWhole(total, shares) {
   return amounts;
 }
 
+/**
+ * Builds the budget breakdown. Steps: start from the profile's default split,
+ * add a rentals share for outdoor/hybrid settings, boost prioritized
+ * categories, reserve contingency, then convert shares to whole amounts.
+ * @param {import("../validation.js").PlanRequest} input
+ * @param {object} profile  an EVENT_PROFILES entry
+ * @param {{ leadRatio: number, tier: string }} context
+ * @returns {import("./index.js").Budget}
+ */
 export function allocateBudget(input, profile, { leadRatio, tier }) {
   const weights = { ...profile.allocation };
   delete weights.contingency;
 
-  if (input.setting === "outdoor") {
-    weights.rentals = (weights.rentals ?? 0) + OUTDOOR_RENTAL_SHARE;
+  if (RENTAL_SHARE[input.setting] > 0) {
+    weights.rentals = (weights.rentals ?? 0) + RENTAL_SHARE[input.setting];
   }
 
   const boosted = new Set(input.priorities.flatMap((priority) => PRIORITY_CATEGORIES[priority]));

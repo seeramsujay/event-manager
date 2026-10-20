@@ -53,3 +53,44 @@ test("budget tier uses per-guest spend normalized to USD", () => {
   // 1,000,000 INR for 100 guests is ~120 USD per guest: moderate, not premium.
   assert.equal(budgetTier({ budget: 1_000_000, guestCount: 100, currency: "INR" }, wedding), "moderate");
 });
+
+test("hybrid events get a smaller rentals line and no extra contingency", () => {
+  const hybrid = allocateBudget(request({ setting: "hybrid" }), wedding, { leadRatio: 1, tier: "moderate" });
+  const outdoor = allocateBudget(request({ setting: "outdoor" }), wedding, { leadRatio: 1, tier: "moderate" });
+  assert.ok(share(hybrid, "rentals") > 0);
+  assert.ok(share(hybrid, "rentals") < share(outdoor, "rentals"));
+  assert.equal(share(hybrid, "contingency"), 5);
+});
+
+test("indoor events have no rentals line unless the profile has one", () => {
+  const indoor = allocateBudget(request(), wedding, { leadRatio: 1, tier: "moderate" });
+  assert.equal(share(indoor, "rentals"), undefined);
+  const community = allocateBudget(request({ eventType: "community" }), EVENT_PROFILES.community, { leadRatio: 1, tier: "moderate" });
+  assert.ok(share(community, "rentals") > 0);
+});
+
+test("priorities with no matching category leave the split unchanged", () => {
+  const community = EVENT_PROFILES.community;
+  const base = allocateBudget(request({ eventType: "community" }), community, { leadRatio: 1, tier: "moderate" });
+  const photo = allocateBudget(request({ eventType: "community", priorities: ["photography"] }), community, { leadRatio: 1, tier: "moderate" });
+  assert.deepEqual(photo.items, base.items);
+});
+
+test("per-guest spend is rounded to cents", () => {
+  const budget = allocateBudget(request({ budget: 1000, guestCount: 3 }), wedding, { leadRatio: 1, tier: "lean" });
+  assert.equal(budget.perGuest, 333.33);
+});
+
+test("fractional budgets are rounded to whole units", () => {
+  const budget = allocateBudget(request({ budget: 999.5 }), wedding, { leadRatio: 1, tier: "lean" });
+  assert.equal(budget.total, 1000);
+});
+
+for (const total of [50, 51, 97, 1001, 123_457, 100_000_000]) {
+  test(`splitWhole is exact for ${total} across awkward shares`, () => {
+    const shares = [0.17, 0.29, 0.13, 0.11, 0.3];
+    const parts = splitWhole(total, shares);
+    assert.equal(parts.reduce((a, b) => a + b), total);
+    parts.forEach((part, i) => assert.ok(Math.abs(part - shares[i] * total) < 1, `part ${i}`));
+  });
+}

@@ -16,6 +16,10 @@ function phaseFor(weeksBefore, idealLeadWeeks) {
  * Schedules tasks backwards from the event date. When the user has less time
  * than the ideal lead time, every pre-event task is compressed proportionally
  * so the order is kept and nothing lands in the past.
+ * @param {object} profile  EVENT_PROFILES entry
+ * @param {object} ctx      planning context (uses leadRatio and the task conditions)
+ * @param {{ eventDate: Date, today: Date, leadDays: number }} dates
+ * @returns {import("./index.js").Timeline}
  */
 export function buildTimeline(profile, ctx, { eventDate, today, leadDays }) {
   const tasks = profile.tasks

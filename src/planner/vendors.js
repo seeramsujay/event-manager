@@ -11,6 +11,10 @@ function upgrade(priority) {
  * Builds the vendor checklist. Priority starts from the vendor's base level
  * (or a context rule), is raised one step when it serves a user priority, and
  * optional vendors on lean budgets get a do-it-yourself nudge.
+ * @param {object} profile  EVENT_PROFILES entry
+ * @param {object} ctx      planning context
+ * @param {{ eventDate: Date, leadDays: number, priorities: string[] }} options
+ * @returns {import("./index.js").Vendor[]}
  */
 export function buildVendorChecklist(profile, ctx, { eventDate, leadDays, priorities }) {
   const boosted = new Set(priorities.flatMap((priority) => PRIORITY_CATEGORIES[priority]));

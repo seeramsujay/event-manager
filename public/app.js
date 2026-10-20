@@ -1,5 +1,6 @@
 "use strict";
 
+// Plan Together frontend. Plain DOM, no framework or build step.
 // All server data is rendered with textContent via el(), never innerHTML,
 // so AI or user text can't inject markup.
 
@@ -12,7 +13,15 @@ const ageField = document.getElementById("age-field");
 const notes = document.getElementById("notes");
 const notesCount = document.getElementById("notes-count");
 const ERROR_FIELDS = ["date", "guestCount", "budget", "honoreeAge"];
+// The server bounds AI calls at about a minute; give up a little after that.
+const REQUEST_TIMEOUT_MS = 75_000;
+let inFlight = false;
 
+/**
+ * Creates an element. `props.text` sets textContent, `props.style` takes an
+ * object (CSSOM is allowed by the CSP; inline style attributes are not), and
+ * any other prop becomes an attribute.
+ */
 function el(tag, props = {}, children = []) {
   const node = document.createElement(tag);
   for (const [key, value] of Object.entries(props)) {
@@ -27,8 +36,20 @@ function el(tag, props = {}, children = []) {
   return node;
 }
 
+/** Whole units for large amounts; cents for small ones so "$0" never hides a real value. */
 function formatMoney(amount, currency) {
-  return new Intl.NumberFormat(undefined, { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
+  const digits = amount !== 0 && Math.abs(amount) < 10 ? 2 : 0;
+  return new Intl.NumberFormat(undefined, { style: "currency", currency, minimumFractionDigits: digits, maximumFractionDigits: digits }).format(amount);
+}
+
+/** Short, stable fingerprint of a plan request (FNV-1a), used to key saved checklist progress. */
+function fingerprint(value) {
+  let hash = 0x811c9dc5;
+  for (const char of JSON.stringify(value)) {
+    hash ^= char.codePointAt(0);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash.toString(36);
 }
 
 function formatDate(iso) {
@@ -118,8 +139,17 @@ function setStatus(message, isError = false) {
   statusEl.classList.toggle("error-msg", isError);
 }
 
+function setBusy(busy) {
+  inFlight = busy;
+  // aria-disabled (not disabled) keeps keyboard focus on the button while we wait.
+  submitBtn.setAttribute("aria-disabled", String(busy));
+  if (busy) results.setAttribute("aria-busy", "true");
+  else results.removeAttribute("aria-busy");
+}
+
 async function onSubmit(event) {
   event.preventDefault();
+  if (inFlight) return;
   clearErrors();
   const payload = readForm();
   const localErrors = validateLocally(payload);
@@ -129,8 +159,7 @@ async function onSubmit(event) {
     return;
   }
 
-  submitBtn.disabled = true;
-  results.setAttribute("aria-busy", "true");
+  setBusy(true);
   setStatus(payload.useAI ? "Creating your plan and personalized ideas…" : "Creating your plan…");
 
   try {
@@ -138,22 +167,31 @@ async function onSubmit(event) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
+      // Hide the previous plan so it can't be mistaken for one built from these inputs.
+      results.hidden = true;
       setStatus(body.error ?? "Something went wrong. Please try again.", true);
       if (body.details) showFieldErrors(body.details);
       return;
     }
-    renderPlan(body);
+    const { useAI, ...planInputs } = payload;
+    renderPlan(body, fingerprint(planInputs));
     setStatus("Your plan is ready.");
     results.hidden = false;
     document.getElementById("results-heading").focus();
-  } catch {
-    setStatus("Could not reach the server. Check your connection and try again.", true);
+  } catch (error) {
+    results.hidden = true;
+    setStatus(
+      error?.name === "TimeoutError"
+        ? "This is taking too long. Please try again, or turn off AI ideas for a faster plan."
+        : "Could not reach the server. Check your connection and try again.",
+      true,
+    );
   } finally {
-    submitBtn.disabled = false;
-    results.removeAttribute("aria-busy");
+    setBusy(false);
   }
 }
 
@@ -287,12 +325,12 @@ function renderIdeas({ source, notice, ideas }) {
   );
 }
 
-function renderPlan(plan) {
+function renderPlan(plan, planKey) {
   renderSummary(plan);
   renderInsights(plan.insights);
   renderBudget(plan.budget);
   renderTimeline(plan.timeline);
-  renderVendors(plan.vendors, `${plan.summary.eventType}:${plan.summary.date}:${plan.summary.eventName}`);
+  renderVendors(plan.vendors, planKey);
   renderIdeas(plan.ideas);
 }
 

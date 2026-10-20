@@ -3,6 +3,12 @@
  * so the first key is always the least recently used.
  */
 export class TtlCache {
+  /**
+   * @param {object} [options]
+   * @param {number} [options.maxEntries] entries kept before evicting the least recently used
+   * @param {number} [options.ttlMs]      lifetime of each entry
+   * @param {() => number} [options.clock]
+   */
   constructor({ maxEntries = 100, ttlMs = 60 * 60 * 1000, clock = Date.now } = {}) {
     this.maxEntries = maxEntries;
     this.ttlMs = ttlMs;
@@ -10,6 +16,7 @@ export class TtlCache {
     this.entries = new Map();
   }
 
+  /** Returns the value, or undefined when missing or expired. Marks it recently used. */
   get(key) {
     const entry = this.entries.get(key);
     if (!entry) return undefined;
@@ -19,6 +26,7 @@ export class TtlCache {
     return entry.value;
   }
 
+  /** Stores a value with a fresh TTL, evicting the oldest entry when full. */
   set(key, value) {
     this.entries.delete(key);
     this.entries.set(key, { value, expiresAt: this.clock() + this.ttlMs });
