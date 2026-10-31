@@ -101,6 +101,16 @@ const rules = [
           detail: "Use digital invitations, reusable rentals and local seasonal food; donate leftover food where regulations allow.",
         }
       : null,
+  ({ ctx }) =>
+    ctx.location
+      ? {
+          level: "info",
+          title: `Local planning: ${ctx.location}`,
+          detail: ctx.setting === "outdoor" || ctx.setting === "hybrid"
+            ? `Outdoor events in ${ctx.location} should account for regional seasonal weather, noise ordinances and local park/venue permits.`
+            : `Sourcing local regional vendors and seasonal catering in ${ctx.location} can reduce travel surcharges and highlight regional flavors.`,
+        }
+      : null,
 ];
 
 /** Minimum USD-equivalent food spend per guest before we warn. */

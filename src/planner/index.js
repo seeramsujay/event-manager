@@ -49,7 +49,7 @@ import { buildVendorChecklist } from "./vendors.js";
  * @property {string} detail
  *
  * @typedef {object} Plan
- * @property {{ eventType: string, eventLabel: string, eventName: string, date: string, guestCount: number,
+ * @property {{ eventType: string, eventLabel: string, eventName: string, location?: string, date: string, guestCount: number,
  *   setting: string, daysToGo: number, tier: string }} summary
  * @property {Budget} budget
  * @property {Timeline} timeline
@@ -76,6 +76,7 @@ export function buildContext(input, profile, today) {
       eventType: input.eventType,
       setting: input.setting,
       guestCount: input.guestCount,
+      location: input.location || "",
       considerations: input.considerations,
       isKids,
       kidFriendly: isKids || input.considerations.includes("kid-friendly"),
@@ -113,6 +114,7 @@ export function buildPlan(input, { now = new Date() } = {}) {
       eventType: input.eventType,
       eventLabel: profile.label,
       eventName: input.eventName || `${profile.label} plan`,
+      location: input.location || "",
       date: input.date,
       guestCount: input.guestCount,
       setting: input.setting,

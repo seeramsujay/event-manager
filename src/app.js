@@ -5,14 +5,14 @@ import path from "node:path";
 import { buildPlan } from "./planner/index.js";
 import { validatePlanRequest } from "./validation.js";
 import { RateLimiter, clientBucket } from "./lib/rateLimiter.js";
+import { createGeocodeService } from "./lib/geocode.js";
 
-const PUBLIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "public");
-const MAX_BODY_BYTES = 16 * 1024;
+const PUBLIC_DIR = fileURLToPath(new URL("../public", import.meta.url));
+const MAX_BODY_BYTES = 16 * 1024; // 16 KB is plenty for any legitimate request
 
 const SECURITY_HEADERS = {
   "Content-Security-Policy":
-    "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; " +
-    "object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
+    "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
   "X-Content-Type-Options": "nosniff",
   "X-Frame-Options": "DENY",
   "Referrer-Policy": "no-referrer",
@@ -38,9 +38,10 @@ function loadStaticFiles() {
 }
 
 class HttpError extends Error {
-  constructor(status, message) {
+  constructor(status, message, headers = {}) {
     super(message);
     this.status = status;
+    this.headers = headers;
   }
 }
 
@@ -106,12 +107,14 @@ async function readJsonBody(req) {
 }
 
 /**
- * Creates the request handler. Dependencies are injected so tests can run the
+ * Builds the HTTP request listener. Pure wrapper around injected services:
+ * tests pass fake AI clients, fake geocode services, clocks and in-memory caches to exercise the
  * full HTTP stack without network access or a real clock.
  *
  * Routes:
- *  - `POST /api/plan`  validated plan request → plan + ideas (rate limited)
- *  - `GET  /api/health` liveness and whether AI ideas are enabled
+ *  - `POST /api/plan`    validated plan request → plan + ideas (rate limited)
+ *  - `GET  /api/health`  liveness and whether AI ideas are enabled
+ *  - `GET  /api/geocode` reverse geocodes lat/lon to city/region name
  *  - `GET  /`, `/styles.css`, `/app.js`, `/theme.js`, `/favicon.svg` static frontend (ETag / 304)
  *
  * Works both as a Node `http` listener and as a serverless handler: when a
@@ -121,12 +124,20 @@ async function readJsonBody(req) {
  * @param {object} deps
  * @param {{ enabled: boolean, getIdeas: Function }} deps.ideasService
  * @param {RateLimiter} [deps.rateLimiter]
+ * @param {ReturnType<typeof createGeocodeService>} [deps.geocodeService]
  * @param {() => Date} [deps.now]       Clock, injectable for deterministic tests.
  * @param {boolean} [deps.trustProxy]   Key rate limits on X-Forwarded-For (only behind a trusted proxy).
- * @param {Pick<Console, "error">} [deps.logger]
+ * @param {Pick<Console, "error" | "warn">} [deps.logger]
  * @returns {(req: import("node:http").IncomingMessage, res: import("node:http").ServerResponse) => Promise<void>}
  */
-export function createApp({ ideasService, rateLimiter = new RateLimiter(), now = () => new Date(), trustProxy = false, logger = console }) {
+export function createApp({
+  ideasService,
+  rateLimiter = new RateLimiter(),
+  geocodeService = createGeocodeService(),
+  now = () => new Date(),
+  trustProxy = false,
+  logger = console,
+}) {
   const staticFiles = loadStaticFiles();
 
   async function handlePlan(req, res) {
@@ -147,15 +158,44 @@ export function createApp({ ideasService, rateLimiter = new RateLimiter(), now =
     return sendJson(res, 200, { ...plan, ideas });
   }
 
+  async function handleGeocode(req, res) {
+    if (req.method !== "GET") throw new HttpError(405, "Method not allowed", { Allow: "GET" });
+    const query = (req.url ?? "").split("?")[1] || "";
+    const params = new URLSearchParams(query);
+    const latStr = params.get("lat");
+    const lonStr = params.get("lon");
+    if (latStr === null || lonStr === null || latStr === "" || lonStr === "") {
+      throw new HttpError(400, "Missing required query parameters: lat and lon");
+    }
+    const lat = Number(latStr);
+    const lon = Number(lonStr);
+    if (!Number.isFinite(lat) || lat < -90 || lat > 90) {
+      throw new HttpError(400, "Latitude must be a number between -90 and 90");
+    }
+    if (!Number.isFinite(lon) || lon < -180 || lon > 180) {
+      throw new HttpError(400, "Longitude must be a number between -180 and 180");
+    }
+    try {
+      const location = await geocodeService.reverse(lat, lon);
+      return sendJson(res, 200, { location });
+    } catch (error) {
+      logger.warn(`[geocode] reverse geocoding failed: ${error.message}`);
+      throw new HttpError(502, "Geocoding service unavailable");
+    }
+  }
+
   return async function handler(req, res) {
     try {
       const pathname = pathnameOf(req);
       if (pathname === "/api/plan") {
-        if (req.method !== "POST") throw new HttpError(405, "Method not allowed");
+        if (req.method !== "POST") throw new HttpError(405, "Method not allowed", { Allow: "POST" });
         return await handlePlan(req, res);
       }
       if (pathname === "/api/health" && req.method === "GET") {
         return sendJson(res, 200, { status: "ok", ai: ideasService.enabled });
+      }
+      if (pathname === "/api/geocode") {
+        return await handleGeocode(req, res);
       }
       const file = staticFiles.get(pathname);
       if (file && (req.method === "GET" || req.method === "HEAD")) {
@@ -169,11 +209,10 @@ export function createApp({ ideasService, rateLimiter = new RateLimiter(), now =
     } catch (error) {
       if (res.headersSent) return res.destroy();
       if (error instanceof HttpError) {
-        return sendJson(res, error.status, { error: error.message }, error.status === 405 ? { Allow: "POST" } : {});
+        return sendJson(res, error.status, { error: error.message }, error.headers);
       }
       logger.error("[server] unexpected error", error);
       return sendJson(res, 500, { error: "Something went wrong. Please try again." });
     }
   };
 }
-

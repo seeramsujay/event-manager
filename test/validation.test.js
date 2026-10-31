@@ -11,7 +11,7 @@ describe("valid requests", () => {
     const result = validate({ eventType: "community", date: "2026-06-01", guestCount: 80, budget: 2000 });
     assert.equal(result.success, true);
     assert.deepEqual(result.data, {
-      eventType: "community", eventName: "", date: "2026-06-01", guestCount: 80, budget: 2000, currency: "USD",
+      eventType: "community", eventName: "", location: "", date: "2026-06-01", guestCount: 80, budget: 2000, currency: "USD",
       setting: "indoor", vibe: "", priorities: [], considerations: [], notes: "", useAI: true,
     });
   });
@@ -41,6 +41,7 @@ describe("boundaries", () => {
     ["budget", 50, true], ["budget", 49.99, false], ["budget", 100_000_000, true], ["budget", 100_000_001, false],
     ["budget", 1234.56, true], ["budget", 0, false],
     ["eventName", "x".repeat(80), true], ["eventName", "x".repeat(81), false],
+    ["location", "x".repeat(100), true], ["location", "x".repeat(101), false],
     ["vibe", "x".repeat(200), true], ["vibe", "x".repeat(201), false],
     ["notes", "x".repeat(500), true], ["notes", "x".repeat(501), false],
     ["date", "2025-12-31", true], // one day of time-zone grace
@@ -73,7 +74,7 @@ describe("wrong types", () => {
     ["priorities", "food"], ["priorities", ["fireworks"]], ["priorities", [1]],
     ["considerations", ["vegan"]], ["considerations", {}],
     ["useAI", "yes"], ["useAI", 1],
-    ["eventName", 42], ["vibe", ["a"]], ["notes", { text: "x" }],
+    ["eventName", 42], ["location", 42], ["vibe", ["a"]], ["notes", { text: "x" }],
     ["date", 20270102], ["date", null],
   ];
   for (const [field, value] of cases) {
@@ -140,7 +141,8 @@ describe("normalization", () => {
   });
 
   test("whitespace-only text becomes empty", () => {
-    assert.equal(validate(request({ vibe: "   \n  " })).data.vibe, "");
+    assert.equal(validate(request({ vibe: "   \n  ", location: "   " })).data.vibe, "");
+    assert.equal(validate(request({ vibe: "   \n  ", location: "   " })).data.location, "");
   });
 
   test("keeps unicode and emoji intact", () => {

@@ -4,6 +4,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createApp } from "./app.js";
 import { createIdeasService } from "./ai/ideas.js";
+import { createGeocodeService } from "./lib/geocode.js";
 import { loadConfig } from "./config.js";
 import { RateLimiter } from "./lib/rateLimiter.js";
 
@@ -17,7 +18,8 @@ import { RateLimiter } from "./lib/rateLimiter.js";
  * @param {Record<string, string | undefined>} [env]
  * @returns {{ config: import("./config.js").AppConfig,
  *   handler: ReturnType<typeof createApp>,
- *   ideasService: ReturnType<typeof createIdeasService> }}
+ *   ideasService: ReturnType<typeof createIdeasService>,
+ *   geocodeService: ReturnType<typeof createGeocodeService> }}
  * @throws {Error} when a configuration value is invalid (see config.js)
  */
 export function createAppFromEnv(env = process.env) {
@@ -26,6 +28,7 @@ export function createAppFromEnv(env = process.env) {
   const client = config.hasCredentials ? new Anthropic({ timeout: 30_000, maxRetries: 1 }) : null;
   const ideasService = createIdeasService({ client, model: config.model });
   const rateLimiter = new RateLimiter({ limit: config.rateLimitPerMinute });
-  const handler = createApp({ ideasService, rateLimiter, trustProxy: config.trustProxy });
-  return { config, handler, ideasService };
+  const geocodeService = createGeocodeService();
+  const handler = createApp({ ideasService, rateLimiter, geocodeService, trustProxy: config.trustProxy });
+  return { config, handler, ideasService, geocodeService };
 }

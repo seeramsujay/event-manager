@@ -326,4 +326,16 @@ describe("buildIdeasPrompt", () => {
     assert.ok(context.keyRisks.includes("Weather backup needed"));
     assert.ok(!context.keyRisks.includes("Accessibility first"));
   });
+  test("includes location in context when provided", () => {
+    const { input, plan } = setup({ location: "Honolulu, Hawaii" });
+    const prompt = buildIdeasPrompt(input, plan);
+    assert.match(prompt, /"location": "Honolulu, Hawaii"/);
+  });
+
+  test("curated ideas adapt personal touch to location", () => {
+    const { input, plan } = setup({ location: "Florence, Italy" });
+    const ideas = curatedIdeas(input, plan);
+    assert.match(ideas.personalTouch, /Florence, Italy/);
+  });
+
 });

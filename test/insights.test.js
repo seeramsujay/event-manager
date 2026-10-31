@@ -63,4 +63,17 @@ describe("insight wording", () => {
     // 200,000 INR for 100 guests is ~24 USD per guest: thin.
     assert.ok(insight({ budget: 200_000, currency: "INR" }, "Food budget is thin"));
   });
+
+  test("location-based insight is generated when location is provided", () => {
+    const indoor = insight({ location: "Paris", setting: "indoor" }, "Local planning: Paris");
+    assert.equal(indoor?.level, "info");
+    assert.match(indoor?.detail, /regional vendors and seasonal catering in Paris/);
+
+    const outdoor = insight({ location: "Maui", setting: "outdoor" }, "Local planning: Maui");
+    assert.equal(outdoor?.level, "info");
+    assert.match(outdoor?.detail, /seasonal weather, noise ordinances and local park\/venue permits/);
+
+    const absent = insight({ location: "" }, "Local planning: Paris");
+    assert.equal(absent, undefined);
+  });
 });

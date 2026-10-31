@@ -11,6 +11,7 @@ describe("createAppFromEnv", () => {
     const app = createAppFromEnv({});
     assert.equal(typeof app.handler, "function");
     assert.equal(app.ideasService.enabled, false);
+    assert.equal(typeof app.geocodeService.reverse, "function");
     assert.equal(app.config.trustProxy, false);
   });
 

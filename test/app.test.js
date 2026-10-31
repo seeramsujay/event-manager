@@ -383,3 +383,60 @@ describe("rate limiting", () => {
     }
   });
 });
+
+describe("geocode endpoint", () => {
+  test("returns location for valid coordinates", async () => {
+    const mockGeocode = {
+      reverse: async (lat, lon) => `City for ${lat},${lon}`,
+    };
+    const testApp = await startApp({ geocodeService: mockGeocode });
+    try {
+      const res = await fetch(`${testApp.base}/api/geocode?lat=47.606&lon=-122.332`);
+      assert.equal(res.status, 200);
+      assert.deepEqual(await res.json(), { location: "City for 47.606,-122.332" });
+    } finally {
+      await testApp.close();
+    }
+  });
+
+  test("requires GET method and returns 405 for POST", async () => {
+    const testApp = await startApp();
+    try {
+      const res = await fetch(`${testApp.base}/api/geocode`, { method: "POST" });
+      assert.equal(res.status, 405);
+      assert.equal(res.headers.get("allow"), "GET");
+    } finally {
+      await testApp.close();
+    }
+  });
+
+  test("validates required lat and lon query parameters", async () => {
+    const testApp = await startApp();
+    try {
+      assert.equal((await fetch(`${testApp.base}/api/geocode`)).status, 400);
+      assert.equal((await fetch(`${testApp.base}/api/geocode?lat=40`)).status, 400);
+      assert.equal((await fetch(`${testApp.base}/api/geocode?lon=-73`)).status, 400);
+      assert.equal((await fetch(`${testApp.base}/api/geocode?lat=&lon=`)).status, 400);
+      assert.equal((await fetch(`${testApp.base}/api/geocode?lat=notanumber&lon=0`)).status, 400);
+      assert.equal((await fetch(`${testApp.base}/api/geocode?lat=0&lon=notanumber`)).status, 400);
+      assert.equal((await fetch(`${testApp.base}/api/geocode?lat=95&lon=0`)).status, 400);
+      assert.equal((await fetch(`${testApp.base}/api/geocode?lat=0&lon=200`)).status, 400);
+    } finally {
+      await testApp.close();
+    }
+  });
+
+  test("returns 502 when geocoding service fails", async () => {
+    const failingGeocode = {
+      reverse: async () => { throw new Error("upstream timeout"); },
+    };
+    const testApp = await startApp({ geocodeService: failingGeocode, logger: { error() {}, warn() {} } });
+    try {
+      const res = await fetch(`${testApp.base}/api/geocode?lat=40&lon=-73`);
+      assert.equal(res.status, 502);
+      assert.deepEqual(await res.json(), { error: "Geocoding service unavailable" });
+    } finally {
+      await testApp.close();
+    }
+  });
+});

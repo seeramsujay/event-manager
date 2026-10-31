@@ -30,6 +30,7 @@ const uniqueList = (values, max) =>
  * @typedef {object} PlanRequest
  * @property {"wedding" | "birthday" | "community"} eventType
  * @property {string} eventName      shown on the plan only; never sent to the AI
+ * @property {string} [location]     city, region, or destination, ≤ 100 chars
  * @property {string} date           YYYY-MM-DD
  * @property {number} guestCount     1–5000
  * @property {number} budget         50–100,000,000 in `currency`
@@ -47,6 +48,7 @@ const uniqueList = (values, max) =>
 export const planRequestSchema = z.strictObject({
   eventType: z.enum(EVENT_TYPES, "Choose wedding, birthday or community event."),
   eventName: freeText(80),
+  location: freeText(100),
   date: z.string("Choose the event date."),
   guestCount: z
     .number("Enter the number of guests.")
