@@ -471,6 +471,54 @@ function initGeolocation() {
   });
 }
 
+// ---- Landing Page CTA & Accessible Smooth Scroll -------------------------
+
+function initHeroCta() {
+  const ctaBtn = document.getElementById("start-planning-cta");
+  const formCard = document.getElementById("form-card");
+  const formHeading = document.getElementById("form-heading");
+
+  if (!ctaBtn || !formCard || !formHeading) return;
+
+  ctaBtn.addEventListener("click", (event) => {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      return;
+    }
+    event.preventDefault();
+
+    const prefersReducedMotion = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)").matches : false;
+
+    const shiftFocusToForm = () => {
+      formHeading.focus({ preventScroll: true });
+      if (window.history && window.history.pushState) {
+        window.history.pushState(null, "", "#form-card");
+      }
+    };
+
+    if (prefersReducedMotion) {
+      if (typeof formCard.scrollIntoView === "function") {
+        formCard.scrollIntoView({ behavior: "auto", block: "start" });
+      }
+      shiftFocusToForm();
+    } else {
+      if (typeof formCard.scrollIntoView === "function") {
+        formCard.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+      let called = false;
+      const onEnd = () => {
+        if (called) return;
+        called = true;
+        window.removeEventListener("scrollend", onEnd);
+        shiftFocusToForm();
+      };
+      if ("onscrollend" in window) {
+        window.addEventListener("scrollend", onEnd, { once: true });
+      }
+      setTimeout(onEnd, 150);
+    }
+  });
+}
+
 // ---- Theme ----------------------------------------------------------------
 
 const THEMES = ["system", "light", "dark"];
@@ -504,4 +552,5 @@ document.getElementById("print-btn").addEventListener("click", () => window.prin
 document.getElementById("download-btn").addEventListener("click", downloadPlan);
 syncEventType();
 initGeolocation();
+initHeroCta();
 initThemeSwitch();

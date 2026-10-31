@@ -660,3 +660,65 @@ describe("geolocation feature", () => {
     window.close();
   });
 });
+
+describe("landing page hero and scroll", () => {
+  test("renders hero section with title, value props, and feature cards", async () => {
+    const window = await openPage();
+    const hero = window.document.querySelector(".hero-section");
+    assert.ok(hero);
+    assert.ok(window.document.getElementById("hero-title"));
+    assert.ok(window.document.getElementById("start-planning-cta"));
+    const features = window.document.querySelectorAll(".feature-card");
+    assert.equal(features.length, 4);
+    assert.ok(window.document.querySelector(".hero-badge"));
+    window.close();
+  });
+
+  test("clicking start planning CTA scrolls to form and transfers focus to heading", async () => {
+    const window = await openPage();
+    const cta = window.document.getElementById("start-planning-cta");
+    const heading = window.document.getElementById("form-heading");
+    let scrolled = false;
+    window.document.getElementById("form-card").scrollIntoView = () => { scrolled = true; };
+
+    cta.click();
+    await waitFor(() => window.document.activeElement === heading, 1500);
+    assert.equal(scrolled, true);
+    assert.equal(window.document.activeElement, heading);
+    window.close();
+  });
+
+  test("handles reduced motion preference with instant scroll", async () => {
+    const window = await openPage();
+    window.matchMedia = (query) => ({
+      matches: query.includes("prefers-reduced-motion: reduce"),
+      media: query,
+    });
+    const cta = window.document.getElementById("start-planning-cta");
+    const heading = window.document.getElementById("form-heading");
+    let scrollOptions = null;
+    window.document.getElementById("form-card").scrollIntoView = (opts) => { scrollOptions = opts; };
+
+    cta.click();
+    assert.ok(scrollOptions);
+    assert.equal(scrollOptions.behavior, "auto");
+    assert.equal(scrollOptions.block, "start");
+    assert.equal(window.document.activeElement, heading);
+    window.close();
+  });
+
+  test("ignores modified clicks on the hero CTA", async () => {
+    const window = await openPage();
+    const cta = window.document.getElementById("start-planning-cta");
+    const heading = window.document.getElementById("form-heading");
+    let scrolled = false;
+    window.document.getElementById("form-card").scrollIntoView = () => { scrolled = true; };
+
+    const evt = new window.MouseEvent("click", { bubbles: true, cancelable: true, metaKey: true });
+    cta.dispatchEvent(evt);
+
+    assert.equal(scrolled, false);
+    assert.notEqual(window.document.activeElement, heading);
+    window.close();
+  });
+});
