@@ -601,3 +601,62 @@ describe("accessibility audit", () => {
     assert.doesNotMatch(html, /\son[a-z]+=/i);
   });
 });
+
+describe("geolocation feature", () => {
+  test("shows message when geolocation is unsupported", async () => {
+    const window = await openPage();
+    delete window.navigator.geolocation;
+    const geoBtn = window.document.getElementById("geo-btn");
+    geoBtn.click();
+    const status = window.document.getElementById("geo-status");
+    assert.equal(status.hidden, false);
+    assert.match(status.textContent, /not supported/);
+    window.close();
+  });
+
+  test("handles permission denied", async () => {
+    const window = await openPage();
+    window.navigator.geolocation = {
+      getCurrentPosition: (_success, error) => error({ code: 1, message: "User denied" }),
+    };
+    const geoBtn = window.document.getElementById("geo-btn");
+    geoBtn.click();
+    const status = window.document.getElementById("geo-status");
+    assert.equal(status.hidden, false);
+    assert.match(status.textContent, /denied/i);
+    window.close();
+  });
+
+  test("sets location and updates input on success", async () => {
+    const window = await openPage();
+    window.navigator.geolocation = {
+      getCurrentPosition: (success) => success({ coords: { latitude: 47.606, longitude: -122.332 } }),
+    };
+    const originalFetch = window.fetch;
+    window.fetch = async (url, opts) => {
+      if (String(url).includes("/api/geocode")) {
+        return {
+          ok: true,
+          json: async () => ({ location: "Seattle, Washington, United States" }),
+        };
+      }
+      return originalFetch(url, opts);
+    };
+    const geoBtn = window.document.getElementById("geo-btn");
+    geoBtn.click();
+    await waitFor(() => window.document.getElementById("location").value === "Seattle, Washington, United States");
+    const status = window.document.getElementById("geo-status");
+    assert.match(status.textContent, /Location set to Seattle/);
+    window.close();
+  });
+
+  test("shows location in summary and text export", async () => {
+    const window = await openPage();
+    const page = driver(window);
+    page.set("location", "Barcelona, Spain");
+    page.set("date", futureDate(60));
+    await page.submitAndWait();
+    assert.match(page.text("#summary"), /Barcelona, Spain/);
+    window.close();
+  });
+});

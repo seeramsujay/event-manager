@@ -14,7 +14,7 @@ const notes = document.getElementById("notes");
 const notesCount = document.getElementById("notes-count");
 const errorSummary = document.getElementById("error-summary");
 const errorList = document.getElementById("error-list");
-const ERROR_FIELDS = ["date", "guestCount", "budget", "honoreeAge"];
+const ERROR_FIELDS = ["date", "guestCount", "budget", "honoreeAge", "location"];
 // The server bounds AI calls at about a minute; give up a little after that.
 const REQUEST_TIMEOUT_MS = 75_000;
 let inFlight = false;
@@ -88,6 +88,7 @@ function readForm() {
   return {
     eventType: data.get("eventType"),
     eventName: data.get("eventName").trim(),
+    location: (data.get("location") || "").trim(),
     date: data.get("date"),
     guestCount: numberOrUndefined(data.get("guestCount")),
     budget: numberOrUndefined(data.get("budget")),
@@ -149,6 +150,9 @@ function validateLocally(payload) {
   if (!(payload.budget >= 50)) errors.push({ field: "budget", message: "Enter a budget of at least 50." });
   if (payload.honoreeAge !== undefined && !(Number.isInteger(payload.honoreeAge) && payload.honoreeAge >= 0 && payload.honoreeAge <= 120)) {
     errors.push({ field: "honoreeAge", message: "Enter an age between 0 and 120." });
+  }
+  if (payload.location && payload.location.length > 100) {
+    errors.push({ field: "location", message: "Enter a location up to 100 characters." });
   }
   return errors;
 }
@@ -222,6 +226,7 @@ async function onSubmit(event) {
 function renderSummary({ summary, budget }) {
   const stats = [
     ["Event", summary.eventName],
+    summary.location ? ["Location", summary.location] : null,
     ["Date", formatDate(summary.date)],
     ["Days to go", String(summary.daysToGo)],
     ["Guests", String(summary.guestCount)],
@@ -229,7 +234,7 @@ function renderSummary({ summary, budget }) {
     ["Per guest", `${formatMoney(budget.perGuest, budget.currency)} (${budget.tier})`],
   ];
   document.getElementById("summary").replaceChildren(
-    ...stats.map(([label, value]) => el("dl", { className: "stat" }, [el("dt", { text: label }), el("dd", { text: value })])),
+    ...stats.filter(Boolean).map(([label, value]) => el("dl", { className: "stat" }, [el("dt", { text: label }), el("dd", { text: value })])),
   );
 }
 
@@ -367,7 +372,7 @@ function planToText(plan) {
     `${summary.eventName}`,
     "=".repeat(summary.eventName.length),
     `${summary.eventLabel} on ${formatDate(summary.date)} (${summary.daysToGo} days to go)`,
-    `${summary.guestCount} guests, ${summary.setting}, budget ${money(budget.total)} (${money(budget.perGuest)} per guest, ${budget.tier})`,
+    `${summary.guestCount} guests, ${summary.setting}${summary.location ? `, in ${summary.location}` : ""}, budget ${money(budget.total)} (${money(budget.perGuest)} per guest, ${budget.tier})`,
     "",
   ];
   if (insights.length) {
@@ -413,6 +418,59 @@ function downloadPlan() {
   setStatus("Your plan was downloaded as a text file.");
 }
 
+
+// ---- Geolocation ----------------------------------------------------------
+
+function initGeolocation() {
+  const geoBtn = document.getElementById("geo-btn");
+  const geoStatus = document.getElementById("geo-status");
+  if (!geoBtn) return;
+
+  function setGeoStatus(msg, isError = false) {
+    if (!geoStatus) return;
+    geoStatus.hidden = !msg;
+    geoStatus.textContent = msg;
+    geoStatus.classList.toggle("error", isError);
+  }
+
+  geoBtn.addEventListener("click", () => {
+    if (!navigator.geolocation) {
+      setGeoStatus("Geolocation is not supported by your browser.", true);
+      return;
+    }
+    setGeoStatus("Detecting your location...");
+    geoBtn.setAttribute("aria-disabled", "true");
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          const res = await fetch(`/api/geocode?lat=${encodeURIComponent(latitude)}&lon=${encodeURIComponent(longitude)}`);
+          if (!res.ok) throw new Error("Could not look up your location.");
+          const data = await res.json();
+          if (data.location) {
+            fields.location.value = data.location;
+            setGeoStatus(`Location set to ${data.location}.`);
+            fields.location.focus();
+          } else {
+            throw new Error("No location found.");
+          }
+        } catch (err) {
+          setGeoStatus(err.message || "Failed to detect location.", true);
+        } finally {
+          geoBtn.removeAttribute("aria-disabled");
+        }
+      },
+      (err) => {
+        geoBtn.removeAttribute("aria-disabled");
+        const msg = err.code === 1 ? "Location permission denied. Please enter it manually." : "Could not determine your location.";
+        setGeoStatus(msg, true);
+      },
+      { timeout: 10_000, maximumAge: 300_000 },
+    );
+  });
+}
+
 // ---- Theme ----------------------------------------------------------------
 
 const THEMES = ["system", "light", "dark"];
@@ -445,4 +503,5 @@ notes.addEventListener("input", () => { notesCount.textContent = `${notes.value.
 document.getElementById("print-btn").addEventListener("click", () => window.print());
 document.getElementById("download-btn").addEventListener("click", downloadPlan);
 syncEventType();
+initGeolocation();
 initThemeSwitch();
