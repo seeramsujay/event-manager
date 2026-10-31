@@ -1,6 +1,7 @@
 node_modules/
 coverage/
 *.log
+*.pdf
 .DS_Store
 
 # Secrets and local overrides; the example stays tracked.

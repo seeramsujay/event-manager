@@ -166,17 +166,17 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.35rem 0.8rem;
+  padding: 0.4rem 0.85rem;
   font-size: 0.9rem;
   font-weight: 600;
   color: var(--accent-text);
-  background: transparent;
   border: 1px solid var(--accent-text);
   border-radius: 999px;
+  background: transparent;
   cursor: pointer;
   user-select: none;
   list-style: none;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background 0.15s ease;
 }
 
 .a11y-toggle::-webkit-details-marker {
@@ -192,9 +192,18 @@ body {
   color: var(--accent);
 }
 
+.a11y-toggle:focus-visible {
+  outline: 3px solid var(--accent-text);
+  outline-offset: 2px;
+}
+
+.a11y-toggle-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
 .a11y-toggle-arrow {
-  display: inline-block;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   transition: transform 0.2s ease;
 }
 
@@ -373,7 +382,8 @@ legend { font-weight: 600; margin-bottom: 0.4rem; }
 .field { margin-bottom: 1rem; }
 .field > label { display: block; font-weight: 600; margin-bottom: 0.3rem; }
 .inline { display: flex; gap: 0.5rem; }
-.inline input { flex: 1; min-width: 0; }
+.inline input { flex: 1 1 auto; min-width: 0; }
+.inline select { flex: 0 0 auto; width: auto; min-width: 5.5rem; }
 
 input, select, textarea {
   font: inherit;
@@ -384,6 +394,7 @@ input, select, textarea {
   padding: 0.55rem 0.7rem;
   width: 100%;
 }
+input[type="checkbox"], input[type="radio"] { width: auto; }
 input:focus, select:focus, textarea:focus { outline: 3px solid var(--focus); outline-offset: 1px; }
 
 input[aria-invalid="true"], select[aria-invalid="true"], textarea[aria-invalid="true"] {
@@ -470,6 +481,11 @@ button[aria-disabled="true"] { opacity: 0.6; cursor: not-allowed; }
 
 .status { margin: 1rem 0; font-weight: 600; }
 
+.print-header,
+.print-footer {
+  display: none;
+}
+
 .results-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1rem; }
 .results-header h2 { margin: 0; }
 .results-actions { display: flex; gap: 0.5rem; }
@@ -485,9 +501,10 @@ button[aria-disabled="true"] { opacity: 0.6; cursor: not-allowed; }
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 0.85rem;
+  margin: 0;
 }
-.stat-label { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
-.stat-value { font-size: 1.35rem; font-weight: 700; margin-top: 0.2rem; }
+.stat dt, .stat-label { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; margin: 0; }
+.stat dd, .stat-value { font-size: 1.35rem; font-weight: 700; margin: 0.2rem 0 0; }
 
 .insights { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6rem; }
 .insight { padding: 0.8rem 1rem; border-radius: 8px; border-left: 4px solid; }
@@ -531,6 +548,7 @@ tbody tr:last-child { font-weight: 700; }
 .vendors { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6rem; }
 .vendor { border: 1px solid var(--border); border-radius: 8px; padding: 0.7rem 0.9rem; }
 .vendor label { display: flex; gap: 0.6rem; align-items: center; font-weight: 600; cursor: pointer; }
+.vendor input[type="checkbox"] { flex-shrink: 0; width: auto; margin: 0; }
 .vendor .hint { margin-left: 1.75rem; }
 .vendor.done label { text-decoration: line-through; color: var(--muted); }
 .priority-essential { color: var(--critical); }
@@ -563,8 +581,324 @@ tbody tr:last-child { font-weight: 700; }
 }
 
 @media print {
-  :root { color-scheme: light; }
-  .site-header, .hero-section, #form-card, .skip-link, button, .site-footer, .status { display: none !important; }
-  #results { display: block !important; }
-  .card { break-inside: avoid; border-color: #999; }
+  @page {
+    margin: 1.2cm 1cm;
+    size: auto;
+  }
+
+  :root,
+  :root[data-theme="dark"],
+  :root[data-theme="light"],
+  :root[data-contrast="high"] {
+    color-scheme: light !important;
+    --bg: #ffffff !important;
+    --surface: #ffffff !important;
+    --text: #1a1a1a !important;
+    --muted: #4a4a4a !important;
+    --border: #d0d0d0 !important;
+    --accent: #551a8b !important;
+    --accent-text: #ffffff !important;
+    --accent-soft: #f4eff8 !important;
+    --critical: #9a1a1e !important;
+    --critical-soft: #fbf0f0 !important;
+    --warning: #7a4800 !important;
+    --warning-soft: #fdf6ea !important;
+    --info: #174f76 !important;
+    --info-soft: #f0f6fa !important;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #1a1a1a !important;
+    font-size: 10.5pt !important;
+    line-height: 1.4 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .site-header,
+  .hero-section,
+  #form-card,
+  .skip-link,
+  .results-actions,
+  .site-footer,
+  .status,
+  .a11y-panel {
+    display: none !important;
+  }
+
+  #results {
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .print-header {
+    display: flex !important;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #222;
+    padding-bottom: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .print-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .print-logo {
+    font-size: 1.8rem;
+    line-height: 1;
+  }
+
+  .print-app-title {
+    font-size: 1.4rem;
+    font-weight: 800;
+    margin: 0;
+    color: #111;
+    letter-spacing: -0.01em;
+  }
+
+  .print-subtitle {
+    font-size: 0.85rem;
+    color: #555;
+    margin: 0.15rem 0 0;
+  }
+
+  .print-footer {
+    display: block !important;
+    margin-top: 1.5rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #ddd;
+    text-align: center;
+    font-size: 0.8rem;
+    color: #666;
+  }
+
+  .results-header {
+    margin-bottom: 0.75rem;
+  }
+
+  .results-header h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0;
+    color: #111;
+  }
+
+  /* Allow natural content flow without pushing every card to a blank page */
+  .card {
+    border: 1px solid #e0e0e0 !important;
+    border-radius: 6px !important;
+    padding: 0.6rem 0.85rem !important;
+    margin-bottom: 0.65rem !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    break-inside: auto;
+  }
+
+  .card:has(table) {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .card h3 {
+    font-size: 1.05rem;
+    margin: 0 0 0.5rem;
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid #eee;
+    color: #111;
+  }
+
+  /* Summary stats grid in print */
+  .summary {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 0.45rem !important;
+    margin-bottom: 0.6rem !important;
+  }
+
+  .stat {
+    border: 1px solid #ddd !important;
+    border-radius: 4px !important;
+    padding: 0.3rem 0.55rem !important;
+    background: #fbfbfb !important;
+    break-inside: avoid;
+    margin: 0 !important;
+  }
+
+  .stat dt,
+  .stat-label {
+    font-size: 0.72rem !important;
+    font-weight: 600;
+    color: #555 !important;
+    text-transform: uppercase;
+    margin: 0 !important;
+  }
+
+  .stat dd,
+  .stat-value {
+    font-size: 1.05rem !important;
+    font-weight: 700 !important;
+    margin: 0.15rem 0 0 !important;
+    color: #111 !important;
+  }
+
+  /* Insights */
+  .insights {
+    gap: 0.4rem !important;
+  }
+
+  .insight {
+    padding: 0.4rem 0.65rem !important;
+    font-size: 0.88rem !important;
+    border-left-width: 3px !important;
+    break-inside: avoid;
+  }
+
+  /* Budget table */
+  .table-wrap {
+    overflow: visible !important;
+    margin: 0.5rem 0 0 !important;
+  }
+
+  table {
+    font-size: 0.92rem !important;
+    break-inside: avoid;
+  }
+
+  h2, h3, h4 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  th {
+    border-bottom: 2px solid #333 !important;
+    padding: 0.35rem 0.5rem !important;
+    font-weight: 700;
+  }
+
+  td {
+    border-bottom: 1px solid #eee !important;
+    padding: 0.4rem 0.5rem !important;
+    vertical-align: middle;
+  }
+
+  tbody tr:last-child td {
+    border-top: 2px solid #333 !important;
+    border-bottom: none !important;
+    font-weight: 700;
+  }
+
+  /* In print, keep .bar container visible so percentage text displays, but hide the colored graphic */
+  .bar {
+    height: auto !important;
+    background: transparent !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  .bar span {
+    display: none !important;
+  }
+
+  .tag {
+    border: 1px solid #999 !important;
+    background: #eee !important;
+    color: #222 !important;
+  }
+
+  /* Timeline */
+  .phase {
+    break-inside: avoid;
+    margin-bottom: 0.6rem;
+  }
+
+  .phase h4 {
+    font-size: 0.92rem !important;
+    margin: 0.5rem 0 0.25rem !important;
+    color: #333 !important;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 0.15rem;
+  }
+
+  .tasks li {
+    padding: 0.3rem 0 !important;
+    font-size: 0.9rem !important;
+    border-bottom: 1px dotted #ccc !important;
+    break-inside: avoid;
+  }
+
+  .tasks time {
+    min-width: 6.5rem !important;
+    font-weight: 600;
+    color: #333 !important;
+  }
+
+  /* Vendor checklist */
+  #vendors-heading + .hint {
+    display: none !important;
+  }
+
+  .vendors {
+    gap: 0.35rem !important;
+  }
+
+  .vendor {
+    border: 1px solid #e0e0e0 !important;
+    border-radius: 4px !important;
+    padding: 0.4rem 0.65rem !important;
+    break-inside: avoid;
+  }
+
+  .vendor label {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 0.5rem !important;
+    font-size: 0.92rem !important;
+  }
+
+  .vendor input[type="checkbox"] {
+    width: 14px !important;
+    height: 14px !important;
+    margin: 0 !important;
+    flex: 0 0 14px !important;
+  }
+
+  .vendor .hint {
+    margin-left: 1.5rem !important;
+    font-size: 0.82rem !important;
+    margin-top: 0.15rem !important;
+    color: #555 !important;
+  }
+
+  /* Ideas */
+  .themes {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 0.5rem !important;
+    margin-bottom: 0.6rem !important;
+  }
+
+  .theme {
+    border: 1px solid #ddd !important;
+    border-radius: 4px !important;
+    padding: 0.5rem 0.65rem !important;
+    background: #fbfbfb !important;
+    break-inside: avoid;
+  }
+
+  .idea-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.6rem !important;
+  }
+
+  .idea-grid > div {
+    break-inside: avoid;
+  }
 }

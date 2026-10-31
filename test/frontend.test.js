@@ -856,4 +856,64 @@ describe("accessibility preferences toolbar", () => {
     assert.match(css, /:root\[data-contrast="high"\]/);
     assert.match(css, /:root\[data-motion="reduce"\]/);
   });
+
+  test("storage event synchronizes accessibility preferences across tabs", async () => {
+    const window = await openPage();
+    const event = new window.StorageEvent("storage", {
+      key: "textSize",
+      newValue: "large",
+    });
+    window.dispatchEvent(event);
+    assert.equal(window.document.documentElement.dataset.textSize, "large");
+    assert.equal(window.document.querySelector('input[name="textSize"][value="large"]').checked, true);
+
+    const contrastEvent = new window.StorageEvent("storage", {
+      key: "contrast",
+      newValue: "high",
+    });
+    window.dispatchEvent(contrastEvent);
+    assert.equal(window.document.documentElement.dataset.contrast, "high");
+    assert.equal(window.document.querySelector('input[name="contrast"][value="high"]').checked, true);
+
+    const motionEvent = new window.StorageEvent("storage", {
+      key: "motion",
+      newValue: "reduce",
+    });
+    window.dispatchEvent(motionEvent);
+    assert.equal(window.document.documentElement.dataset.motion, "reduce");
+    assert.equal(window.document.querySelector('input[name="motion"][value="reduce"]').checked, true);
+
+    const themeEvent = new window.StorageEvent("storage", {
+      key: "theme",
+      newValue: "dark",
+    });
+    window.dispatchEvent(themeEvent);
+    assert.equal(window.document.documentElement.dataset.theme, "dark");
+    assert.equal(window.document.querySelector('input[name="theme"][value="dark"]').checked, true);
+    window.close();
+  });
+
+  test("budget input and currency select flexbox rules prevent squishing", async () => {
+    const css = await (await fetch(`${base}/styles.css`)).text();
+    assert.match(css, /\.inline select\s*\{[^}]*min-width/);
+    assert.match(css, /\.inline input\s*\{[^}]*flex:\s*1\s+1\s+auto/);
+  });
+
+  test("print stylesheet includes clean document header, footer, and hide bar rules", async () => {
+    const css = await (await fetch(`${base}/styles.css`)).text();
+    assert.match(css, /@media print/);
+    assert.match(css, /\.print-header\s*\{[^}]*display:\s*flex/);
+    assert.match(css, /\.bar span\s*\{[^}]*display:\s*none/);
+  });
+
+  test("rendering plan updates results heading and print subtitle with event name", async () => {
+    const window = await openPage();
+    const page = driver(window);
+    page.set("date", futureDate(60));
+    page.set("eventName", "Silver Anniversary");
+    await page.submitAndWait();
+    assert.equal(page.text("#results-heading"), "Your plan: Silver Anniversary");
+    assert.match(page.text("#print-subtitle"), /Silver Anniversary/);
+    window.close();
+  });
 });

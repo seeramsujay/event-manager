@@ -184,18 +184,16 @@ async function onSubmit(event) {
   }
 
   setBusy(true);
-  setStatus(payload.useAI ? "Creating your plan and personalized ideas…" : "Creating your plan…");
-
+  setStatus("Generating your plan...");
   try {
     const response = await fetch("/api/plan", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "content-type": "application/json" },
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
-      // Hide the previous plan so it can't be mistaken for one built from these inputs.
       results.hidden = true;
       currentPlan = null;
       setStatus(body.details ? "" : body.error ?? "Something went wrong. Please try again.", true);
@@ -234,8 +232,17 @@ function renderSummary({ summary, budget }) {
     ["Per guest", `${formatMoney(budget.perGuest, budget.currency)} (${budget.tier})`],
   ];
   document.getElementById("summary").replaceChildren(
-    ...stats.filter(Boolean).map(([label, value]) => el("dl", { className: "stat" }, [el("dt", { text: label }), el("dd", { text: value })])),
+    ...stats.filter(Boolean).map(([label, value]) =>
+      el("dl", { className: "stat" }, [
+        el("dt", { className: "stat-label", text: label }),
+        el("dd", { className: "stat-value", text: value }),
+      ]),
+    ),
   );
+  const heading = document.getElementById("results-heading");
+  if (heading) heading.textContent = summary.eventName ? `Your plan: ${summary.eventName}` : "Your plan";
+  const printSub = document.getElementById("print-subtitle");
+  if (printSub) printSub.textContent = summary.eventName ? `${summary.eventName} • Generated Event Plan` : "AI Event Planning Assistant • Generated Event Plan";
 }
 
 function renderInsights(insights) {
@@ -538,7 +545,9 @@ function setTheme(theme) {
 }
 
 function initThemeSwitch() {
-  const current = document.documentElement.dataset.theme ?? "system";
+  let saved = null;
+  try { saved = localStorage.getItem("theme"); } catch { /* ignore */ }
+  const current = (THEMES.includes(saved) ? saved : null) || document.documentElement.dataset.theme || "system";
   for (const radio of document.querySelectorAll('input[name="theme"]')) {
     radio.checked = radio.value === current;
     radio.addEventListener("change", () => setTheme(radio.value));
@@ -586,23 +595,52 @@ function setMotion(mode) {
 }
 
 function initA11yPreferences() {
-  const currentTextSize = document.documentElement.dataset.textSize ?? "normal";
+  let savedTextSize = null;
+  let savedContrast = null;
+  let savedMotion = null;
+  try {
+    savedTextSize = localStorage.getItem("textSize");
+    savedContrast = localStorage.getItem("contrast");
+    savedMotion = localStorage.getItem("motion");
+  } catch { /* ignore */ }
+
+  const currentTextSize = (TEXT_SIZES.includes(savedTextSize) ? savedTextSize : null) || document.documentElement.dataset.textSize || "normal";
   for (const radio of document.querySelectorAll('input[name="textSize"]')) {
     radio.checked = radio.value === currentTextSize;
     radio.addEventListener("change", () => setTextSize(radio.value));
   }
 
-  const currentContrast = document.documentElement.dataset.contrast ?? "normal";
+  const currentContrast = (CONTRAST_MODES.includes(savedContrast) ? savedContrast : null) || document.documentElement.dataset.contrast || "normal";
   for (const radio of document.querySelectorAll('input[name="contrast"]')) {
     radio.checked = radio.value === currentContrast;
     radio.addEventListener("change", () => setContrast(radio.value));
   }
 
-  const currentMotion = document.documentElement.dataset.motion ?? "system";
+  const currentMotion = (MOTION_MODES.includes(savedMotion) ? savedMotion : null) || document.documentElement.dataset.motion || "system";
   for (const radio of document.querySelectorAll('input[name="motion"]')) {
     radio.checked = radio.value === currentMotion;
     radio.addEventListener("change", () => setMotion(radio.value));
   }
+
+  window.addEventListener("storage", (event) => {
+    if (event.key === "theme") {
+      const val = THEMES.includes(event.newValue) ? event.newValue : "system";
+      setTheme(val);
+      for (const r of document.querySelectorAll('input[name="theme"]')) r.checked = r.value === val;
+    } else if (event.key === "textSize") {
+      const val = TEXT_SIZES.includes(event.newValue) ? event.newValue : "normal";
+      setTextSize(val);
+      for (const r of document.querySelectorAll('input[name="textSize"]')) r.checked = r.value === val;
+    } else if (event.key === "contrast") {
+      const val = CONTRAST_MODES.includes(event.newValue) ? event.newValue : "normal";
+      setContrast(val);
+      for (const r of document.querySelectorAll('input[name="contrast"]')) r.checked = r.value === val;
+    } else if (event.key === "motion") {
+      const val = MOTION_MODES.includes(event.newValue) ? event.newValue : "system";
+      setMotion(val);
+      for (const r of document.querySelectorAll('input[name="motion"]')) r.checked = r.value === val;
+    }
+  });
 
   const panel = document.getElementById("a11y-panel");
   const toggle = document.getElementById("a11y-toggle");
