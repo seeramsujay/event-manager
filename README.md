@@ -1,7 +1,7 @@
 # Plan Together: GenAI Event Planning Assistant
 
 [![CI](https://github.com/seeramsujay/event-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/seeramsujay/event-manager/actions/workflows/ci.yml)
-![Tests](https://img.shields.io/badge/tests-591%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-592%20passing-brightgreen)
 ![Coverage](https://img.shields.io/badge/coverage-100%25%20lines-brightgreen)
 ![Node](https://img.shields.io/badge/node-%E2%89%A522.9-blue)
 ![License](https://img.shields.io/badge/license-MIT-blue)
@@ -188,7 +188,7 @@ All settings are environment variables, validated at startup. A bad value stops 
 | Vulnerable dependencies | Two runtime dependencies; CI runs `pnpm audit` |
 | Secrets in the repository | `.env` files are git-ignored (the example stays tracked); the Vercel project link is ignored too |
 
-### 🧪 Testing: 591 tests, 100% line coverage
+### 🧪 Testing: 592 tests, 100% line coverage
 
 | Suite | Tests | What it covers |
 |---|---|---|
@@ -200,7 +200,7 @@ All settings are environment variables, validated at startup. A bad value stops 
 | `geocode` | 9 | Coordinate rounding, validation, cache hits, upstream network failure handling, custom fetch injection |
 | `dates`, `catalog`, `config` | 89 | Calendar edge cases (leap years), catalog data integrity, configuration parsing |
 | `timeline`, `vendors`, `insights`, `budget`, `planner` | 125 | Every rule triggered and not triggered, table-driven, location insight |
-| `frontend` | 57 | Real page in jsdom: validation UX with error summary, landing page hero & accessible smooth scroll CTA, accessibility options toolbar (font size, contrast, motion), geolocation detection flows, focus management, rendering, XSS, checklist persistence, text export, failure handling, an **automated accessibility audit** |
+| `frontend` | 58 | Real page in jsdom: validation UX with error summary, landing page hero & accessible smooth scroll CTA, accessibility options toolbar (font size, contrast, motion), geolocation detection flows, focus management, rendering, XSS, checklist persistence, text export, failure handling, an **automated accessibility audit** |
 | `lib`, `server` | 28 | Cache and rate-limiter edge cases; the real entry point as a child process (startup, config errors, SIGTERM/SIGINT) |
 
 CI runs lint, tests with coverage thresholds and `pnpm audit` on Node 22 and 24 for every push.

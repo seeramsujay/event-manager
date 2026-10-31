@@ -845,6 +845,11 @@ describe("accessibility preferences toolbar", () => {
     window.close();
   });
 
+  test("theme switch choices have transparent background when unchecked so text is visible", async () => {
+    const css = await (await fetch(`${base}/styles.css`)).text();
+    assert.match(css, /\.theme-switch \.choice\s*\{[^}]*background:\s*transparent/);
+  });
+
   test("stylesheet contains rules for text-size, contrast, and motion dataset attributes", async () => {
     const css = await (await fetch(`${base}/styles.css`)).text();
     assert.match(css, /:root\[data-text-size="large"\]/);

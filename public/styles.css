@@ -136,8 +136,22 @@ body {
 .header-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; position: relative; }
 .theme-switch { display: flex; align-items: center; flex-wrap: wrap; gap: 0.4rem; margin: 0; }
 .theme-switch legend { float: left; font-weight: 600; margin: 0 0.4rem 0 0; }
-.theme-switch .choice { border-color: var(--accent-text); color: var(--accent-text); padding: 0.3rem 0.7rem; font-size: 0.9rem; }
-.theme-switch .choice:has(input:checked) { background: var(--accent-text); color: var(--accent); border-color: var(--accent-text); }
+.theme-switch .choice {
+  background: transparent;
+  border-color: var(--accent-text);
+  color: var(--accent-text);
+  padding: 0.3rem 0.7rem;
+  font-size: 0.9rem;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.theme-switch .choice:hover {
+  background: light-dark(rgba(255, 255, 255, 0.18), rgba(0, 0, 0, 0.18));
+}
+.theme-switch .choice:has(input:checked) {
+  background: var(--accent-text);
+  color: var(--accent);
+  border-color: var(--accent-text);
+}
 .theme-switch input { accent-color: var(--accent-text); }
 .theme-switch .choice:has(input:checked) input { accent-color: var(--accent); }
 .theme-switch .choice:has(input:focus-visible) { outline-color: var(--accent-text); }
@@ -170,7 +184,7 @@ body {
 }
 
 .a11y-toggle:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: light-dark(rgba(255, 255, 255, 0.18), rgba(0, 0, 0, 0.18));
 }
 
 .a11y-panel[open] > .a11y-toggle {
