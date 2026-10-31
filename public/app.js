@@ -12,10 +12,14 @@ const results = document.getElementById("results");
 const ageField = document.getElementById("age-field");
 const notes = document.getElementById("notes");
 const notesCount = document.getElementById("notes-count");
+const errorSummary = document.getElementById("error-summary");
+const errorList = document.getElementById("error-list");
 const ERROR_FIELDS = ["date", "guestCount", "budget", "honoreeAge"];
 // The server bounds AI calls at about a minute; give up a little after that.
 const REQUEST_TIMEOUT_MS = 75_000;
 let inFlight = false;
+/** The plan currently on screen, kept for the text export. */
+let currentPlan = null;
 
 /**
  * Creates an element. `props.text` sets textContent, `props.style` takes an
@@ -105,19 +109,34 @@ function clearErrors() {
     message.hidden = true;
     message.textContent = "";
   }
+  errorSummary.hidden = true;
+  errorList.replaceChildren();
 }
 
+/**
+ * Marks each invalid field and lists every problem in one summary, which
+ * takes focus so screen reader and keyboard users hear the whole picture and
+ * can jump straight to a field.
+ */
 function showFieldErrors(details) {
-  let first = null;
+  const links = [];
   for (const { field, message } of details) {
     const target = document.getElementById(`${field}-error`);
     if (!target) continue;
     target.textContent = message;
     target.hidden = false;
     fields[field].setAttribute("aria-invalid", "true");
-    first ??= fields[field];
+    const link = el("a", { href: `#${field}`, text: message });
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      fields[field].focus();
+    });
+    links.push(el("li", {}, link));
   }
-  first?.focus();
+  if (links.length === 0) return;
+  errorList.replaceChildren(...links);
+  errorSummary.hidden = false;
+  errorSummary.focus();
 }
 
 function validateLocally(payload) {
@@ -154,7 +173,8 @@ async function onSubmit(event) {
   const payload = readForm();
   const localErrors = validateLocally(payload);
   if (localErrors.length) {
-    setStatus("Please fix the highlighted fields.", true);
+    // The error summary is an alert of its own; an extra status line would be read twice.
+    setStatus("");
     showFieldErrors(localErrors);
     return;
   }
@@ -173,7 +193,8 @@ async function onSubmit(event) {
     if (!response.ok) {
       // Hide the previous plan so it can't be mistaken for one built from these inputs.
       results.hidden = true;
-      setStatus(body.error ?? "Something went wrong. Please try again.", true);
+      currentPlan = null;
+      setStatus(body.details ? "" : body.error ?? "Something went wrong. Please try again.", true);
       if (body.details) showFieldErrors(body.details);
       return;
     }
@@ -184,6 +205,7 @@ async function onSubmit(event) {
     document.getElementById("results-heading").focus();
   } catch (error) {
     results.hidden = true;
+    currentPlan = null;
     setStatus(
       error?.name === "TimeoutError"
         ? "This is taking too long. Please try again, or turn off AI ideas for a faster plan."
@@ -326,12 +348,92 @@ function renderIdeas({ source, notice, ideas }) {
 }
 
 function renderPlan(plan, planKey) {
+  currentPlan = plan;
   renderSummary(plan);
   renderInsights(plan.insights);
   renderBudget(plan.budget);
   renderTimeline(plan.timeline);
   renderVendors(plan.vendors, planKey);
   renderIdeas(plan.ideas);
+}
+
+// ---- Export ---------------------------------------------------------------
+
+/** The plan as readable plain text, so it can be shared with co-hosts or kept offline. */
+function planToText(plan) {
+  const { summary, budget, timeline, vendors, insights, ideas } = plan;
+  const money = (amount) => formatMoney(amount, budget.currency);
+  const lines = [
+    `${summary.eventName}`,
+    "=".repeat(summary.eventName.length),
+    `${summary.eventLabel} on ${formatDate(summary.date)} (${summary.daysToGo} days to go)`,
+    `${summary.guestCount} guests, ${summary.setting}, budget ${money(budget.total)} (${money(budget.perGuest)} per guest, ${budget.tier})`,
+    "",
+  ];
+  if (insights.length) {
+    lines.push("THINGS TO KNOW");
+    for (const insight of insights) lines.push(`- [${insight.level}] ${insight.title}: ${insight.detail}`);
+    lines.push("");
+  }
+  lines.push("BUDGET BREAKDOWN");
+  for (const item of budget.items) lines.push(`- ${item.label}${item.prioritized ? " (priority)" : ""}: ${money(item.amount)} (${item.percent}%)`);
+  lines.push("", "TIMELINE");
+  let phase = null;
+  for (const task of timeline.tasks) {
+    if (task.phase !== phase) {
+      phase = task.phase;
+      lines.push(`${phase}:`);
+    }
+    lines.push(`- ${formatDate(task.dueDate)}: ${task.title}${task.urgent ? " (this week)" : ""}`);
+  }
+  lines.push("", "VENDOR CHECKLIST");
+  for (const vendor of vendors) {
+    lines.push(`[ ] ${vendor.name} (${vendor.priority}) - ${vendor.bookNow ? "book now" : `book by ${formatDate(vendor.bookBy)}`}. ${vendor.tip}`);
+  }
+  lines.push("", `IDEAS (${ideas.source === "ai" ? "AI-personalized" : "curated"})`);
+  for (const theme of ideas.ideas.themes) lines.push(`- Theme: ${theme.name} - ${theme.description}`);
+  for (const [title, items] of [["Decor", ideas.ideas.decor], ["Food & drink", ideas.ideas.food], ["Activities", ideas.ideas.activities], ["Budget tips", ideas.ideas.budgetTips]]) {
+    lines.push(`${title}:`);
+    for (const item of items) lines.push(`- ${item}`);
+  }
+  lines.push("", ideas.ideas.personalTouch, "", "Estimates are guidance only. Confirm prices, permits and requirements locally.");
+  return lines.join("\n");
+}
+
+function downloadPlan() {
+  if (!currentPlan) return;
+  const name = currentPlan.summary.eventName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "event-plan";
+  const blob = new Blob([planToText(currentPlan)], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = el("a", { href: url, download: `${name}.txt` });
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  setStatus("Your plan was downloaded as a text file.");
+}
+
+// ---- Theme ----------------------------------------------------------------
+
+const THEMES = ["system", "light", "dark"];
+
+/** Applies a theme choice; "system" removes the override so the OS setting applies. */
+function setTheme(theme) {
+  if (!THEMES.includes(theme)) theme = "system";
+  if (theme === "system") delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = theme;
+  try {
+    if (theme === "system") localStorage.removeItem("theme");
+    else localStorage.setItem("theme", theme);
+  } catch { /* storage unavailable: the choice lasts for this page only */ }
+}
+
+function initThemeSwitch() {
+  const current = document.documentElement.dataset.theme ?? "system";
+  for (const radio of document.querySelectorAll('input[name="theme"]')) {
+    radio.checked = radio.value === current;
+    radio.addEventListener("change", () => setTheme(radio.value));
+  }
 }
 
 // ---- Wire up --------------------------------------------------------------
@@ -341,4 +443,6 @@ form.addEventListener("submit", onSubmit);
 for (const radio of fields.eventType) radio.addEventListener("change", syncEventType);
 notes.addEventListener("input", () => { notesCount.textContent = `${notes.value.length} / 500 characters`; });
 document.getElementById("print-btn").addEventListener("click", () => window.print());
+document.getElementById("download-btn").addEventListener("click", downloadPlan);
 syncEventType();
+initThemeSwitch();

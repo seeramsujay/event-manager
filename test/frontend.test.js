@@ -38,8 +38,12 @@ async function waitFor(predicate, timeoutMs = 3000) {
   }
 }
 
-/** Opens the app. jsdom has no fetch, so route the page's fetch to Node's. */
-async function openPage() {
+/**
+ * Opens the app. jsdom has no fetch, so route the page's fetch to Node's.
+ * `storage` seeds localStorage before any script runs (jsdom gives every
+ * window its own storage, so this stands in for a returning visitor).
+ */
+async function openPage({ storage = {} } = {}) {
   const dom = await JSDOM.fromURL(`${base}/`, {
     runScripts: "dangerously",
     resources: "usable",
@@ -47,6 +51,7 @@ async function openPage() {
     beforeParse(window) {
       // Node's fetch can't take jsdom's AbortSignal; timeouts are covered by code review, not here.
       window.fetch = (url, { signal, ...options } = {}) => fetch(new URL(url, base), options);
+      for (const [key, value] of Object.entries(storage)) window.localStorage.setItem(key, value);
     },
   });
   const { window } = dom;
@@ -124,9 +129,22 @@ describe("validation feedback", () => {
       assert.equal(page.$(`#${id}-error`).hidden, false, id);
       assert.ok(page.$(`#${id}`).getAttribute("aria-describedby").includes(`${id}-error`), id);
     }
-    assert.equal(page.doc.activeElement.id, "date");
-    assert.match(page.text("#status"), /fix the highlighted fields/);
-    assert.ok(page.$("#status").classList.contains("error-msg"));
+    const summary = page.$("#error-summary");
+    assert.equal(summary.hidden, false);
+    assert.equal(summary.getAttribute("role"), "alert");
+    assert.equal(page.doc.activeElement.id, "error-summary", "the summary takes focus so every problem is announced");
+    assert.deepEqual([...summary.querySelectorAll("a")].map((a) => a.getAttribute("href")), ["#date", "#guestCount", "#budget"]);
+    assert.equal(page.text("#status"), "", "no second announcement of the same errors");
+    window.close();
+  });
+
+  test("error summary links move focus to the matching field", async () => {
+    const window = await openPage();
+    const page = driver(window);
+    page.set("guestCount", "0");
+    page.submit();
+    page.$('#error-summary a[href="#guestCount"]').click();
+    assert.equal(page.doc.activeElement.id, "guestCount");
     window.close();
   });
 
@@ -161,6 +179,8 @@ describe("validation feedback", () => {
     await page.submitAndWait();
     assert.equal(page.$("#date-error").hidden, true);
     assert.equal(page.$("#date").hasAttribute("aria-invalid"), false);
+    assert.equal(page.$("#error-summary").hidden, true);
+    assert.equal(page.$("#error-list").children.length, 0);
     window.close();
   });
 
@@ -173,7 +193,9 @@ describe("validation feedback", () => {
     assert.equal(page.$("#budget").getAttribute("aria-invalid"), "true");
     assert.equal(page.$("#budget-error").hidden, false);
     assert.equal(page.$("#results").hidden, true);
-    assert.equal(page.doc.activeElement.id, "budget");
+    assert.equal(page.$("#error-summary").hidden, false);
+    assert.match(page.text("#error-summary"), /at most 100,000,000/);
+    assert.equal(page.doc.activeElement.id, "error-summary");
     window.close();
   });
 });
@@ -313,6 +335,98 @@ describe("vendor checklist", () => {
   });
 });
 
+describe("theme switch", () => {
+  test("follows the system by default and lets the user override it", async () => {
+    const window = await openPage();
+    const page = driver(window);
+    const root = window.document.documentElement;
+    assert.equal(root.dataset.theme, undefined);
+    assert.equal(page.$('input[name="theme"][value="system"]').checked, true);
+
+    page.check('input[name="theme"][value="dark"]');
+    assert.equal(root.dataset.theme, "dark");
+    assert.equal(window.localStorage.getItem("theme"), "dark");
+
+    page.check('input[name="theme"][value="light"]');
+    assert.equal(root.dataset.theme, "light");
+
+    page.check('input[name="theme"][value="system"]');
+    assert.equal(root.dataset.theme, undefined);
+    assert.equal(window.localStorage.getItem("theme"), null);
+    window.close();
+  });
+
+  test("a saved theme is applied before the app script runs and reflected in the switch", async () => {
+    const window = await openPage({ storage: { theme: "light" } });
+    assert.equal(window.document.documentElement.dataset.theme, "light");
+    assert.equal(window.document.querySelector('input[name="theme"][value="light"]').checked, true);
+    window.close();
+  });
+
+  test("an unknown saved value is ignored", async () => {
+    const window = await openPage({ storage: { theme: "neon" } });
+    assert.equal(window.document.documentElement.dataset.theme, undefined);
+    assert.equal(window.document.querySelector('input[name="theme"][value="system"]').checked, true);
+    window.close();
+  });
+
+  test("the stylesheet switches both themes through color-scheme", async () => {
+    const css = await (await fetch(`${base}/styles.css`)).text();
+    assert.match(css, /:root \{[^}]*color-scheme: light dark/);
+    assert.match(css, /:root\[data-theme="light"\] \{ color-scheme: light; \}/);
+    assert.match(css, /:root\[data-theme="dark"\] \{ color-scheme: dark; \}/);
+    assert.match(css, /--bg: light-dark\(/);
+  });
+});
+
+describe("plan export", () => {
+  test("downloads the plan as readable text covering every section", async () => {
+    const window = await openPage();
+    const page = driver(window);
+    page.set("date", futureDate(60));
+    page.set("eventName", "Sam & Alex: Garden Wedding!");
+    page.check('input[name="priorities"][value="food"]');
+    await page.submitAndWait();
+
+    let blob;
+    let link;
+    window.URL.createObjectURL = (value) => { blob = value; return "blob:plan"; };
+    window.URL.revokeObjectURL = () => {};
+    const click = window.HTMLAnchorElement.prototype.click;
+    window.HTMLAnchorElement.prototype.click = function () { link = this; };
+    try {
+      page.$("#download-btn").click();
+    } finally {
+      window.HTMLAnchorElement.prototype.click = click;
+    }
+    assert.equal(link.getAttribute("download"), "sam-alex-garden-wedding.txt", "file name is derived safely from the event name");
+    assert.equal(page.$("a[download]"), null, "the helper link is removed again");
+    assert.match(page.text("#status"), /downloaded/);
+
+    const text = await new Promise((resolve) => {
+      const reader = new window.FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.readAsText(blob);
+    });
+    assert.match(text, /^Sam & Alex: Garden Wedding!\n=+\n/);
+    for (const heading of ["THINGS TO KNOW", "BUDGET BREAKDOWN", "TIMELINE", "VENDOR CHECKLIST", "IDEAS (AI-personalized)"]) {
+      assert.ok(text.includes(heading), heading);
+    }
+    assert.match(text, /Food & drinks \(priority\)/);
+    assert.match(text, /\[ \] Venue \(essential\)/);
+    assert.ok(text.includes(XSS), "AI text is exported verbatim as text");
+    window.close();
+  });
+
+  test("does nothing before a plan exists", async () => {
+    const window = await openPage();
+    window.URL.createObjectURL = () => { throw new Error("must not be called"); };
+    window.document.getElementById("download-btn").click();
+    assert.equal(window.document.getElementById("status").textContent, "");
+    window.close();
+  });
+});
+
 describe("failure handling", () => {
   test("network failures show a message, hide stale results and keep focus on the button", async () => {
     const window = await openPage();
@@ -437,7 +551,7 @@ describe("accessibility audit", () => {
 
   test("radio and checkbox groups are wrapped in fieldsets with legends", async () => {
     const window = await openPage();
-    for (const name of ["eventType", "priorities", "considerations"]) {
+    for (const name of ["theme", "eventType", "priorities", "considerations"]) {
       const input = window.document.querySelector(`input[name="${name}"]`);
       const fieldset = input.closest("fieldset");
       assert.ok(fieldset?.querySelector("legend")?.textContent.trim(), name);
@@ -461,6 +575,22 @@ describe("accessibility audit", () => {
     assert.ok(page.$("#budget-table caption").textContent);
     assert.ok([...page.doc.querySelectorAll("#budget-table thead th")].every((th) => th.getAttribute("scope") === "col"));
     assert.ok([...page.doc.querySelectorAll("#budget-table tbody th")].every((th) => th.getAttribute("scope") === "row"));
+    window.close();
+  });
+
+  test("stylesheet covers chip focus, forced colors and reduced motion", async () => {
+    const css = await (await fetch(`${base}/styles.css`)).text();
+    assert.match(css, /\.choice:has\(input:focus-visible\)/);
+    assert.match(css, /@media \(forced-colors: active\)/);
+    assert.match(css, /@media \(prefers-reduced-motion: no-preference\)/);
+  });
+
+  test("the error summary is wired as a labelled alert region", async () => {
+    const window = await openPage();
+    const summary = window.document.getElementById("error-summary");
+    assert.equal(summary.getAttribute("tabindex"), "-1");
+    assert.ok(window.document.getElementById(summary.getAttribute("aria-labelledby")));
+    assert.equal(summary.hidden, true);
     window.close();
   });
 

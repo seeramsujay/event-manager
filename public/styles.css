@@ -1,43 +1,27 @@
 :root {
-  --bg: #faf8fc;
-  --surface: #ffffff;
-  --text: #1f1b24;
-  --muted: #5c5566;
-  --border: #d9d3e0;
-  --accent: #6b2f8f;
-  --accent-text: #ffffff;
-  --accent-soft: #f1e8f7;
-  --focus: #1a5fb4;
-  --critical: #a4161a;
-  --critical-soft: #fde8e8;
-  --warning: #8a5300;
-  --warning-soft: #fff4dc;
-  --info: #1f5f8b;
-  --info-soft: #e6f1f9;
+  /* Light and dark values live side by side; `color-scheme` picks which one applies. */
+  color-scheme: light dark;
+  --bg: light-dark(#faf8fc, #16131a);
+  --surface: light-dark(#ffffff, #211d27);
+  --text: light-dark(#1f1b24, #f2eef6);
+  --muted: light-dark(#5c5566, #b8b0c2);
+  --border: light-dark(#d9d3e0, #3d3647);
+  --accent: light-dark(#6b2f8f, #c99ae6);
+  --accent-text: light-dark(#ffffff, #1a0f22);
+  --accent-soft: light-dark(#f1e8f7, #2f2438);
+  --focus: light-dark(#1a5fb4, #8ab4f8);
+  --critical: light-dark(#a4161a, #ff9b9b);
+  --critical-soft: light-dark(#fde8e8, #3a1c1e);
+  --warning: light-dark(#8a5300, #ffcf7a);
+  --warning-soft: light-dark(#fff4dc, #362a14);
+  --info: light-dark(#1f5f8b, #9ccbf0);
+  --info-soft: light-dark(#e6f1f9, #18293a);
   --radius: 12px;
-  color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #16131a;
-    --surface: #211d27;
-    --text: #f2eef6;
-    --muted: #b8b0c2;
-    --border: #3d3647;
-    --accent: #c99ae6;
-    --accent-text: #1a0f22;
-    --accent-soft: #2f2438;
-    --focus: #8ab4f8;
-    --critical: #ff9b9b;
-    --critical-soft: #3a1c1e;
-    --warning: #ffcf7a;
-    --warning-soft: #362a14;
-    --info: #9ccbf0;
-    --info-soft: #18293a;
-    color-scheme: dark;
-  }
-}
+/* The theme switch overrides the system preference; "system" leaves both enabled. */
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
 
 *, *::before, *::after { box-sizing: border-box; }
 
@@ -73,6 +57,14 @@ body {
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 
 .site-header { background: var(--accent); color: var(--accent-text); padding-block: 1.5rem; margin-bottom: 1.5rem; }
+.header-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; }
+.theme-switch { display: flex; align-items: center; flex-wrap: wrap; gap: 0.4rem; margin: 0; }
+.theme-switch legend { float: left; font-weight: 600; margin: 0 0.4rem 0 0; }
+.theme-switch .choice { border-color: var(--accent-text); color: var(--accent-text); padding: 0.3rem 0.7rem; font-size: 0.9rem; }
+.theme-switch .choice:has(input:checked) { background: var(--accent-text); color: var(--accent); border-color: var(--accent-text); }
+.theme-switch input { accent-color: var(--accent-text); }
+.theme-switch .choice:has(input:checked) input { accent-color: var(--accent); }
+.theme-switch .choice:has(input:focus-visible) { outline-color: var(--accent-text); }
 .site-header h1 { margin: 0; font-size: 1.9rem; }
 .tagline { margin: 0.25rem 0 0; }
 
@@ -114,6 +106,17 @@ input[type="checkbox"], input[type="radio"] { width: 1.15rem; height: 1.15rem; a
 [aria-invalid="true"] { border-color: var(--critical); border-width: 2px; }
 .error { color: var(--critical); font-size: 0.9rem; margin: 0.3rem 0 0; font-weight: 600; }
 
+.error-summary {
+  border: 3px solid var(--critical);
+  border-radius: 8px;
+  padding: 0.9rem 1rem;
+  margin-bottom: 1.25rem;
+  background: var(--critical-soft);
+}
+.error-summary h3 { margin: 0 0 0.4rem; font-size: 1.05rem; color: var(--critical); }
+.error-summary ul { margin: 0; padding-left: 1.2rem; }
+.error-summary a { color: var(--critical); font-weight: 600; }
+
 .event-types, .chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .choice {
   display: inline-flex;
@@ -125,6 +128,9 @@ input[type="checkbox"], input[type="radio"] { width: 1.15rem; height: 1.15rem; a
   cursor: pointer;
 }
 .choice:has(input:checked) { background: var(--accent-soft); border-color: var(--accent); }
+/* Show the focus ring around the whole chip, which is the real hit target. */
+.choice:has(input:focus-visible) { outline: 3px solid var(--focus); outline-offset: 2px; }
+.choice input:focus-visible { outline: none; }
 .toggle { border-radius: 8px; }
 
 button {
@@ -146,6 +152,7 @@ button[aria-disabled="true"] { opacity: 0.6; cursor: progress; }
 
 .results-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.5rem; margin-bottom: 1rem; }
 .results-header h2 { margin: 0; }
+.results-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 
 .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: 0.75rem; margin-bottom: 1.25rem; }
 .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.8rem 1rem; margin: 0; }
@@ -170,7 +177,7 @@ th, td { text-align: left; padding: 0.5rem 0.4rem; border-bottom: 1px solid var(
 
 .phase h4 { margin: 1rem 0 0.4rem; font-size: 1rem; color: var(--accent); }
 .tasks { list-style: none; margin: 0; padding: 0; }
-.tasks li { display: flex; gap: 1rem; padding: 0.45rem 0; border-bottom: 1px dashed var(--border); }
+.tasks li { display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; padding: 0.45rem 0; border-bottom: 1px dashed var(--border); }
 .tasks time { min-width: 7.5rem; color: var(--muted); font-variant-numeric: tabular-nums; }
 .urgent { color: var(--critical); font-weight: 700; }
 
@@ -191,11 +198,21 @@ th, td { text-align: left; padding: 0.5rem 0.4rem; border-bottom: 1px solid var(
 .theme strong { display: block; }
 .personal { font-style: italic; margin-top: 1rem; }
 
+/* Windows High Contrast / forced colors: keep meaning that otherwise lives in background colors. */
+@media (forced-colors: active) {
+  .bar span { background: CanvasText; forced-color-adjust: none; }
+  .insight, .theme, .stat, .vendor, .error-summary { border: 1px solid CanvasText; }
+  .insight { border-left-width: 5px; }
+  .choice:has(input:checked) { border: 2px solid Highlight; }
+  button[aria-disabled="true"] { opacity: 1; color: GrayText; border-color: GrayText; }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   html { scroll-behavior: smooth; }
 }
 
 @media print {
+  :root { color-scheme: light; }
   .site-header, #form-card, .skip-link, button, .site-footer, .status { display: none !important; }
   #results { display: block !important; }
   .card { break-inside: avoid; border-color: #999; }

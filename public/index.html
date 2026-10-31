@@ -3,19 +3,29 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
   <meta name="description" content="Plan weddings, birthdays and community events with budgets, timelines, vendor checklists and AI-personalized ideas.">
   <title>Plan Together — Event Planning Assistant</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/styles.css">
+  <script src="/theme.js"></script>
   <script src="/app.js" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
 
   <header class="site-header">
-    <div class="wrap">
-      <h1>Plan Together</h1>
-      <p class="tagline">Your planning assistant for weddings, birthdays and community events.</p>
+    <div class="wrap header-row">
+      <div>
+        <h1>Plan Together</h1>
+        <p class="tagline">Your planning assistant for weddings, birthdays and community events.</p>
+      </div>
+      <fieldset class="theme-switch" id="theme-switch">
+        <legend>Theme</legend>
+        <label class="choice"><input type="radio" name="theme" value="system" checked> System</label>
+        <label class="choice"><input type="radio" name="theme" value="light"> Light</label>
+        <label class="choice"><input type="radio" name="theme" value="dark"> Dark</label>
+      </fieldset>
     </div>
   </header>
 
@@ -23,6 +33,11 @@
     <section aria-labelledby="form-heading" class="card" id="form-card">
       <h2 id="form-heading">Tell us about your event</h2>
       <p class="hint">Fields marked <span aria-hidden="true">*</span><span class="visually-hidden">with an asterisk</span> are required.</p>
+
+      <div id="error-summary" class="error-summary" role="alert" tabindex="-1" aria-labelledby="error-summary-heading" hidden>
+        <h3 id="error-summary-heading">Please fix the following before continuing</h3>
+        <ul id="error-list"></ul>
+      </div>
 
       <form id="plan-form" novalidate>
         <fieldset class="event-types">
@@ -120,7 +135,10 @@
     <section id="results" aria-labelledby="results-heading" hidden>
       <div class="results-header">
         <h2 id="results-heading" tabindex="-1">Your plan</h2>
-        <button type="button" class="secondary" id="print-btn">Print plan</button>
+        <div class="results-actions">
+          <button type="button" class="secondary" id="download-btn">Download as text</button>
+          <button type="button" class="secondary" id="print-btn">Print plan</button>
+        </div>
       </div>
       <div id="summary" class="summary"></div>
 
