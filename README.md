@@ -1,7 +1,7 @@
 # Plan Together: GenAI Event Planning Assistant
 
 [![CI](https://github.com/seeramsujay/event-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/seeramsujay/event-manager/actions/workflows/ci.yml)
-![Tests](https://img.shields.io/badge/tests-579%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-583%20passing-brightgreen)
 ![Coverage](https://img.shields.io/badge/coverage-100%25%20lines-brightgreen)
 ![Node](https://img.shields.io/badge/node-%E2%89%A522.9-blue)
 ![License](https://img.shields.io/badge/license-MIT-blue)
@@ -10,6 +10,7 @@ An assistant that helps people organize **weddings, birthdays and community even
 
 | Part of the plan | What you get |
 |---|---|
+| 🌟 **Landing page & smooth scroll** | Clean hero introduction with key value propositions and a smooth-scroll CTA button to the planner form |
 | 💰 **Budget breakdown** | Category amounts that add up exactly to your budget, shifted toward what you care about most |
 | 🗓️ **Timeline** | Tasks scheduled backwards from your date. If you have less time than usual, the whole schedule is compressed to fit |
 | ✅ **Vendor checklist** | What to book, how important it is, the date to book it by and a practical tip. Ticks are saved in your browser |
@@ -121,8 +122,8 @@ src/
     dates.js         UTC calendar-day helpers
   ai/ideas.js        Claude integration: prompt, schema, validation, cache, fallback
   lib/               TTL/LRU cache, bounded rate limiter, geocoding service
-public/              accessible static frontend with geolocation support (HTML, CSS, vanilla JS, no build step)
-test/                579 tests: unit, property-based, HTTP integration, jsdom UI, process, serverless entry
+public/              accessible static frontend with landing page hero, smooth scroll CTA, and geolocation (HTML, CSS, vanilla JS, no build step)
+test/                583 tests: unit, property-based, HTTP integration, jsdom UI, process, serverless entry
 docs/                architecture and API reference
 ```
 
@@ -186,7 +187,7 @@ All settings are environment variables, validated at startup. A bad value stops 
 | Vulnerable dependencies | Two runtime dependencies; CI runs `pnpm audit` |
 | Secrets in the repository | `.env` files are git-ignored (the example stays tracked); the Vercel project link is ignored too |
 
-### 🧪 Testing: 579 tests, 100% line coverage
+### 🧪 Testing: 583 tests, 100% line coverage
 
 | Suite | Tests | What it covers |
 |---|---|---|
@@ -198,7 +199,7 @@ All settings are environment variables, validated at startup. A bad value stops 
 | `geocode` | 9 | Coordinate rounding, validation, cache hits, upstream network failure handling, custom fetch injection |
 | `dates`, `catalog`, `config` | 89 | Calendar edge cases (leap years), catalog data integrity, configuration parsing |
 | `timeline`, `vendors`, `insights`, `budget`, `planner` | 125 | Every rule triggered and not triggered, table-driven, location insight |
-| `frontend` | 45 | Real page in jsdom: validation UX with the error summary, geolocation detection flows, focus management, rendering, XSS, checklist persistence, text export, failure handling, an **automated accessibility audit** |
+| `frontend` | 49 | Real page in jsdom: validation UX with error summary, landing page hero & accessible smooth scroll CTA, geolocation detection flows, focus management, rendering, XSS, checklist persistence, text export, failure handling, an **automated accessibility audit** |
 | `lib`, `server` | 28 | Cache and rate-limiter edge cases; the real entry point as a child process (startup, config errors, SIGTERM/SIGINT) |
 
 CI runs lint, tests with coverage thresholds and `pnpm audit` on Node 22 and 24 for every push.
@@ -207,6 +208,7 @@ CI runs lint, tests with coverage thresholds and `pnpm audit` on Node 22 and 24 
 
 - Semantic landmarks, a skip link, a single `h1` and headings without skipped levels (all checked by tests).
 - Every control has a label. Radio and checkbox groups use `fieldset` and `legend`, and the budget table has a caption and scoped headers.
+- Landing page hero section provides clear value propositions and an accessible "Start planning" CTA with smooth scroll that shifts focus to the form heading without disorienting assistive technologies.
 - Geolocation button provides immediate status messages via polite aria live region (`#geo-status`).
 - Validation problems appear in an **error summary** (`role="alert"`) that takes focus and links to each field, and each field is marked with `aria-invalid` and described by its own message. Status updates use a polite live region, and focus moves to the results when they are ready.
 - The submit button uses `aria-disabled` while busy, so keyboard focus is never lost.
