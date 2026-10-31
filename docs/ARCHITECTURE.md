@@ -6,7 +6,7 @@ This document explains **why** the system is built the way it is. For usage, see
 
 1. **Decisions are deterministic; creativity is generative.** Money, deadlines and safety tasks come from tested rules. The LLM writes ideas only, with the rules' output as grounding.
 2. **Always useful.** Every AI failure mode falls back to a complete plan with curated ideas. The app works with no API key at all.
-3. **Pure core, thin shell.** `buildPlan()` is a pure function of `(input, now)`. I/O (HTTP, the Claude call, the clock) lives at the edges and is injected, so tests need no network and no real time. One handler serves both the standalone server and the serverless entry.
+3. **Pure core, thin shell.** `buildPlan()` is a pure function of `(input, now)`. I/O (HTTP, the Claude call, geocoding, the clock) lives at the edges and is injected, so tests need no network and no real time. One handler serves both the standalone server and the serverless entry.
 4. **Knowledge as data.** Budget splits, tasks, vendors and ideas live in `catalog.js`. Tuning the advice means editing data, not logic, and the catalog has its own integrity tests.
 5. **Minimal surface.** Two runtime dependencies and no framework, build step or database.
 
@@ -16,10 +16,17 @@ This document explains **why** the system is built the way it is. For usage, see
 sequenceDiagram
   participant B as Browser
   participant A as app.js
+  participant G as lib/geocode.js
   participant V as validation.js
   participant P as planner
   participant I as ai/ideas.js
   participant C as Claude API
+  opt Geolocation resolution
+    B->>A: GET /api/geocode?lat=..&lon=..
+    A->>G: reverseGeocode(lat, lon)
+    G-->>A: { location: "City, State, Country" }
+    A-->>B: 200 { location }
+  end
   B->>A: POST /api/plan (JSON)
   A->>A: rate limit · content type · 16 KB cap
   A->>V: validatePlanRequest(body, now)
@@ -44,6 +51,7 @@ sequenceDiagram
 
 | Context field | Derived from |
 |---|---|
+| `location` | request location, sanitized text (≤ 100 chars) |
 | `leadDays` | event date − today (UTC calendar days) |
 | `leadRatio` | `min(1, leadDays / idealLeadDays)`; drives compression |
 | `tier` | budget per guest in USD vs the profile's lean and premium thresholds |
@@ -77,7 +85,7 @@ The priority starts from the vendor's base level, or a context rule (for example
 
 ### Insights (`insights.js`)
 
-An ordered list of small, independent rules. Each one inspects the context, budget and timeline and returns at most one insight. Results are sorted by severity, using a stable sort that keeps rule order within a level. Adding advice means adding one rule and one table-driven test.
+An ordered list of small, independent rules. Each one inspects the context, budget and timeline and returns at most one insight. When a location is provided, a planning insight reminds hosts to verify local municipal permits, noise ordinances, parking, and seasonal climate patterns. Results are sorted by severity, using a stable sort that keeps rule order within a level. Adding advice means adding one rule and one table-driven test.
 
 ## AI integration (`src/ai/ideas.js`)
 
@@ -87,7 +95,7 @@ An ordered list of small, independent rules. Each one inspects the context, budg
 | `effort: "low"` on `claude-opus-5-5` | The heavy reasoning is already done by the rules engine; low effort keeps the interactive request fast. The model is configurable |
 | `fallbacks: "default"` (beta `server-side-fallback-2026-07-01`) | A request declined by a safety classifier is re-run on a suitable model server-side. Only text after the last `fallback` block is parsed, because an earlier partial answer may precede it |
 | Second validation with Zod | Defense in depth: rejects empty lists and blank strings; caps list sizes and string lengths before anything reaches the UI or cache |
-| Prompt contains plan facts (tier, top categories, risks) | Keeps ideas consistent with the budget and the situation |
+| Prompt contains plan facts & location | Grounding includes tier, top categories, risks, and city/region (`location`) to tailor themes, food, decor, and regional touches |
 | Event name excluded from the prompt | It often contains people's names and adds nothing for idea generation |
 | Free text fenced in `<vibe>`/`<notes>` with `<>` stripped | User text can't break out of its fence; the system prompt says fenced content is data |
 | One-hour LRU cache, keyed on the request plus date-dependent plan facts | Repeated submissions cost nothing; the key changes when the day count or risks change |
@@ -101,17 +109,18 @@ An ordered list of small, independent rules. Each one inspects the context, budg
 | **Transport and headers** | CSP `default-src 'self'` (no inline scripts or styles, `object-src 'none'`, `base-uri 'none'`, `frame-ancestors 'none'`), `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: no-referrer`, a Permissions-Policy, `Cross-Origin-Opener-Policy`, `Cache-Control: no-store` on the API; HSTS is added by `vercel.json` where TLS is terminated |
 | **Request handling** | The path is parsed without `new URL()` (which can throw on raw targets); every error is caught and returned as a generic message; the 16 KB limit is enforced while streaming; media type parsed per RFC 9110 |
 | **Input** | Strict Zod schema with unknown keys rejected; typed numbers, enums and bounded lengths; control characters stripped; real calendar dates only |
-| **Abuse and cost** | Fixed-window rate limit per client. Memory is bounded (`maxKeys`; expired windows dropped in O(1) amortized), IPv6 is grouped by /64, and behind a trusted proxy only the proxy-appended right-most `X-Forwarded-For` entry counts |
+| **Abuse and cost** | Fixed-window rate limit per client (plan submissions 20/min, geocode lookups 30/min). Memory is bounded (`maxKeys`; expired windows dropped in O(1) amortized), IPv6 is grouped by /64, and behind a trusted proxy only the proxy-appended right-most `X-Forwarded-For` entry counts |
+| **Location & Privacy** | Browser geolocation coordinates are resolved through the backend proxy (`GET /api/geocode`) to avoid CSP connect-src violations and upstream API key exposure. Coordinates are rounded to 3 decimal places (~110m) before caching (24h TTL) and querying Nominatim, avoiding high-precision GPS tracking |
 | **Output** | The frontend renders with `textContent` only; CSS widths are set via CSSOM, which the CSP allows, never with `style=""` |
 | **Secrets** | The API key lives in server env only; it is never logged (tested) and never sent to the browser |
 | **Static files** | A fixed allowlist, loaded into memory at startup with content-hash ETags (`no-cache` + `304`) |
 | **Secrets at rest** | `.env` and `.env.*` are git-ignored (only `.env.example` is tracked), as is the Vercel project link |
 
-## Frontend (`public/`)
-
+## Frontend (`public/`)\n
 Vanilla JS with no framework and no build step. Key behaviors:
 
 - **Rendering**: an `el()` helper builds DOM nodes, with text set only through `textContent`.
+- **Geolocation**: a "Use my location" button uses the standard `navigator.geolocation` API with permission handling and passes coordinates to `/api/geocode`, populating the location input field.
 - **Validation**: client-side checks mirror the server for instant feedback, and the server stays authoritative; its `422` details are mapped back onto fields the same way.
 - **Error summary**: every problem is listed once in a `role="alert"` region with a link per field, and that region takes focus. Screen reader users hear the full list; keyboard and pointer users jump straight to a field. Each field also carries `aria-invalid` and its own `aria-describedby` message.
 - **Focus management**: the results heading gets focus on success; the submit button uses `aria-disabled` while busy, so focus is never dropped.
@@ -129,8 +138,9 @@ Vanilla JS with no framework and no build step. Key behaviors:
 | Invariants | Property-based: 2,000 random valid requests (seeded PRNG, so failures are reproducible) checked against every plan invariant |
 | Data | Catalog integrity: shares sum to 1, ids unique, categories known, rule functions return valid values |
 | AI | A fake client returns each response shape (success, fallback blocks, refusals, truncation, bad JSON, empty lists, SDK error classes) |
+| Reverse Geocode | Unit tests for coordinate parsing, rounding, TTL caching, error handling, and mock HTTP fetch |
 | HTTP | A real server on a random port, plus raw-socket requests for targets `fetch()` won't send |
-| UI | The real `index.html` and `app.js` in jsdom: user flows, the error summary, text export, failure modes and an automated accessibility audit |
+| UI | The real `index.html` and `app.js` in jsdom: user flows, geolocation interactions, error summary, text export, failure modes and an automated accessibility audit |
 | Serverless entry | `api/index.js` invoked with pre-parsed bodies the way Vercel does, and mounted on a plain Node server to prove it is the same handler |
 | Process | `server.js` spawned as a child process: startup modes, config errors, signal handling |
 
@@ -143,7 +153,7 @@ Coverage gates (98% lines, 95% branches, 98% functions) and ESLint run in CI on 
 | `src/server.js` | `pnpm start`, containers, any Node host | Node `http` listener with request timeout and graceful shutdown |
 | `api/index.js` | Vercel | `vercel.json` rewrites every path here; the export is the same `(req, res)` handler, built with `TRUST_PROXY=true` because the platform appends the client address to `X-Forwarded-For`. JSON bodies arrive pre-parsed in `req.body`, which `app.js` accepts |
 
-Both go through `src/bootstrap.js`, so there is one place where configuration, the Anthropic client, the rate limiter and the handler are wired together.
+Both go through `src/bootstrap.js`, so there is one place where configuration, the Anthropic client, geocode service, rate limiters, and the handler are wired together.
 
 ## Scaling notes
 

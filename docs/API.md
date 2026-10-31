@@ -4,7 +4,8 @@ All API responses are JSON (`application/json; charset=utf-8`) and carry `Cache-
 
 | Method & path | Purpose | Rate limited |
 |---|---|---|
-| `POST /api/plan` | Create a plan with ideas | Yes |
+| `POST /api/plan` | Create a plan with ideas | Yes (20 req/min) |
+| `GET /api/geocode` | Reverse-geocode coordinates to city/region for local suggestions | Yes (30 req/min) |
 | `GET /api/health` | Liveness and AI status | No |
 | `GET /`, `/index.html`, `/styles.css`, `/app.js`, `/theme.js`, `/favicon.svg` | Frontend (`Cache-Control: no-cache` with an `ETag`; `If-None-Match` gets a `304`) | No |
 
@@ -24,6 +25,7 @@ Creates a complete plan from the event details. The request must use `Content-Ty
 | `budget` | number | ✔ | 50–100,000,000; rounded to whole units |
 | `currency` | string | | `USD` (default) · `EUR` · `GBP` · `CAD` · `AUD` · `INR` |
 | `setting` | string | | `indoor` (default) · `outdoor` · `hybrid` |
+| `location` | string | | ≤ 100 chars; city, region or venue area for localized ideas & suggestions |
 | `eventName` | string | | ≤ 80 chars. Shown on the plan; **never sent to the AI** |
 | `vibe` | string | | ≤ 200 chars; style keywords |
 | `notes` | string | | ≤ 500 chars; dietary needs, traditions and so on |
@@ -45,6 +47,7 @@ curl -s http://127.0.0.1:3000/api/plan \
     "guestCount": 25,
     "budget": 1200,
     "setting": "outdoor",
+    "location": "Austin, Texas",
     "honoreeAge": 7,
     "priorities": ["entertainment"],
     "considerations": ["kid-friendly"],
@@ -66,6 +69,7 @@ The response is abbreviated here (`"…"`); real responses contain every item.
     "date": "2026-11-14",
     "guestCount": 25,
     "setting": "outdoor",
+    "location": "Austin, Texas",
     "daysToGo": 25,
     "tier": "moderate"
   },
@@ -155,6 +159,42 @@ A `422` example:
 ```
 
 `field` is always a top-level request field (or `body` when the body itself is not an object), so a client can attach each message to its input.
+
+---
+
+## `GET /api/geocode`
+
+Resolves latitude and longitude into a user-friendly city and region name (`"City, State, Country"`). Acts as a server-side proxy to protect user privacy (coordinates are rounded to 3 decimal places ~110m), enforce rate limits, cache responses (24-hour TTL), and comply with browser Content Security Policy (`connect-src 'self'`).
+
+### Query parameters
+
+| Parameter | Type | Required | Rules |
+|---|---|---|---|
+| `lat` | number / string | ✔ | Latitude in degrees (-90 to 90) |
+| `lon` | number / string | ✔ | Longitude in degrees (-180 to 180) |
+
+### Example
+
+```bash
+curl -s "http://127.0.0.1:3000/api/geocode?lat=30.2672&lon=-97.7431"
+```
+
+### `200 OK`
+
+```json
+{
+  "location": "Austin, Texas, United States"
+}
+```
+
+If the coordinates cannot be resolved by the upstream provider, `{ "location": "" }` is returned with status `200 OK`.
+
+### Errors
+
+| Status | When | Example `error` |
+|---|---|---|
+| `400` | Missing or invalid `lat`/`lon` values | `Invalid coordinates. lat (-90..90) and lon (-180..180) are required.` |
+| `429` | Over the geocoding rate limit (30 req/min) | `Too many requests. Please wait a moment.` |
 
 ---
 
