@@ -6,7 +6,7 @@ All API responses are JSON (`application/json; charset=utf-8`) and carry `Cache-
 |---|---|---|
 | `POST /api/plan` | Create a plan with ideas | Yes |
 | `GET /api/health` | Liveness and AI status | No |
-| `GET /`, `/index.html`, `/styles.css`, `/app.js`, `/favicon.svg` | Frontend | No |
+| `GET /`, `/index.html`, `/styles.css`, `/app.js`, `/theme.js`, `/favicon.svg` | Frontend (`Cache-Control: no-cache` with an `ETag`; `If-None-Match` gets a `304`) | No |
 
 ---
 

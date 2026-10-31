@@ -1,7 +1,7 @@
 # Plan Together: GenAI Event Planning Assistant
 
 [![CI](https://github.com/seeramsujay/event-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/seeramsujay/event-manager/actions/workflows/ci.yml)
-![Tests](https://img.shields.io/badge/tests-537%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-560%20passing-brightgreen)
 ![Coverage](https://img.shields.io/badge/coverage-100%25%20lines-brightgreen)
 ![Node](https://img.shields.io/badge/node-%E2%89%A522.9-blue)
 ![License](https://img.shields.io/badge/license-MIT-blue)
@@ -15,6 +15,7 @@ An assistant that helps people organize **weddings, birthdays and community even
 | ✅ **Vendor checklist** | What to book, how important it is, the date to book it by and a practical tip. Ticks are saved in your browser |
 | ⚠️ **Context-aware insights** | Warnings and tips for rushed timelines, tight budgets, weather, crowds, kids, milestone birthdays and accessibility |
 | ✨ **Personalized ideas** | Themes, decor, food, activities and budget tips from Claude, grounded in your plan. Curated ideas are used as a fallback |
+| 📄 **Take it with you** | Download the whole plan as a text file to share with co-hosts, or print it |
 
 ---
 
@@ -100,10 +101,12 @@ flowchart LR
 ### Project structure
 
 ```
+api/index.js         serverless entry (Vercel): the same handler, behind the platform proxy
 src/
-  server.js          entry point: config, Anthropic client, HTTP server, graceful shutdown
+  server.js          entry point for a standalone server: HTTP listener, graceful shutdown
+  bootstrap.js       wires config, the Anthropic client, rate limiter and handler (shared by both entries)
   config.js          environment variables, validated at startup
-  app.js             request handler: routing, security headers, body limits, rate limiting
+  app.js             request handler: routing, security headers, body limits, rate limiting, ETags
   validation.js      Zod request schema + calendar rules
   planner/
     catalog.js       planning knowledge as data: budgets, tasks, vendors, ideas
@@ -116,7 +119,7 @@ src/
   ai/ideas.js        Claude integration: prompt, schema, validation, cache, fallback
   lib/               TTL/LRU cache, bounded rate limiter
 public/              accessible static frontend (HTML, CSS, vanilla JS, no build step)
-test/                537 tests: unit, property-based, HTTP integration, jsdom UI, process
+test/                560 tests: unit, property-based, HTTP integration, jsdom UI, process, serverless entry
 docs/                architecture and API reference
 ```
 
@@ -127,21 +130,25 @@ Requires **Node.js 22.9+**.
 ```bash
 git clone https://github.com/seeramsujay/event-manager.git
 cd event-manager
-npm install
+pnpm install
 cp .env.example .env        # optional: add ANTHROPIC_API_KEY for AI ideas
-npm start                   # → http://127.0.0.1:3000
+pnpm start                  # → http://127.0.0.1:3000
 ```
 
 Without `ANTHROPIC_API_KEY` the app runs in **curated mode**: everything works, and ideas come from a hand-written catalog.
 
 | Command | What it does |
 |---|---|
-| `npm start` | Run the server (reads `.env` if present) |
-| `npm run dev` | Run with auto-restart on file changes |
-| `npm test` | Run all 537 tests |
-| `npm run test:coverage` | Tests with coverage; fails below 98% lines, 95% branches or 98% functions |
-| `npm run lint` | ESLint |
-| `npm run check` | Lint plus tests with coverage: the same gate CI runs |
+| `pnpm start` | Run the server (reads `.env` if present) |
+| `pnpm run dev` | Run with auto-restart on file changes |
+| `pnpm test` | Run all tests |
+| `pnpm run test:coverage` | Tests with coverage; fails below 98% lines, 95% branches or 98% functions |
+| `pnpm run lint` | ESLint |
+| `pnpm run check` | Lint plus tests with coverage: the same gate CI runs |
+
+### Deploying
+
+The app is a plain Node HTTP server, so any Node host works (`pnpm start` with `HOST=0.0.0.0` in a container). For **Vercel**, no extra setup is needed: `vercel.json` rewrites every path to `api/index.js`, which runs the same handler with `TRUST_PROXY` on, and adds HSTS and the security headers at the edge. Set `ANTHROPIC_API_KEY` in the project's environment variables to enable AI ideas.
 
 ## Configuration
 
@@ -168,42 +175,44 @@ All settings are environment variables, validated at startup. A bad value stops 
 | Oversized or abusive requests | 16 KB body limit enforced while streaming; JSON-only media type; request timeout |
 | Cost abuse of the paid AI endpoint | Per-client rate limit with bounded memory, IPv6 grouped by /64, spoof-resistant proxy handling, response cache |
 | XSS | The UI renders only through `textContent`; strict CSP (`'self'` only, no inline scripts or styles); tests inject HTML through both AI and user fields |
-| Clickjacking and data leaks | `frame-ancestors 'none'`, `X-Frame-Options`, `no-referrer`, `nosniff`, a Permissions-Policy, and `Cache-Control: no-store` on API responses |
+| Clickjacking and data leaks | `frame-ancestors 'none'`, `X-Frame-Options`, `no-referrer`, `nosniff`, a Permissions-Policy, `Cache-Control: no-store` on API responses, and HSTS when deployed behind TLS |
 | Path traversal | Static files come from a fixed allowlist preloaded into memory; the filesystem is never touched with user input |
 | Prompt injection | User text is fenced and stripped of angle brackets; the system prompt treats it as data; output is schema-constrained and re-validated |
 | Crashes from bad requests | All handler errors are caught and return generic messages; malformed request targets are tested at the raw-socket level |
-| Vulnerable dependencies | Two runtime dependencies; CI runs `npm audit` |
+| Vulnerable dependencies | Two runtime dependencies; CI runs `pnpm audit` |
+| Secrets in the repository | `.env` files are git-ignored (the example stays tracked); the Vercel project link is ignored too |
 
-### 🧪 Testing: 537 tests, 100% line coverage
+### 🧪 Testing: 560 tests, 100% line coverage
 
 | Suite | Tests | What it covers |
 |---|---|---|
 | `invariants` | 81 | **Property-based:** 2,000 seeded random plans must satisfy every invariant (money adds up, dates are ordered and never in the past, sorting, determinism, fence safety) |
 | `validation` | 92 | Boundaries, wrong types, malformed bodies, normalization, unicode, time-zone grace, human-readable messages |
-| `app` | 48 | Full HTTP stack: headers, content negotiation, 400/404/405/413/415/422/429/500, chunked bodies, path traversal, raw malformed targets, proxy spoofing |
+| `app` | 53 | Full HTTP stack: headers, ETag/304 revalidation, content negotiation, 400/404/405/413/415/422/429/500, chunked bodies, pre-parsed bodies, path traversal, raw malformed targets, proxy spoofing |
+| `api` | 9 | The serverless entry and shared bootstrap: config modes, pre-parsed bodies, per-client limits behind the platform proxy, the same export as a plain Node listener |
 | `ideas` | 43 | Claude request shape, fallback-block parsing, caching, 13 failure modes, output trimming, prompt privacy and fencing |
 | `dates`, `catalog`, `config` | 89 | Calendar edge cases (leap years), catalog data integrity, configuration parsing |
 | `timeline`, `vendors`, `insights`, `budget`, `planner` | 123 | Every rule triggered and not triggered, table-driven |
-| `frontend` | 32 | Real page in jsdom: validation UX, focus management, rendering, XSS, checklist persistence, failure handling, an **automated accessibility audit** |
+| `frontend` | 41 | Real page in jsdom: validation UX with the error summary, focus management, rendering, XSS, checklist persistence, text export, failure handling, an **automated accessibility audit** |
 | `lib`, `server` | 28 | Cache and rate-limiter edge cases; the real entry point as a child process (startup, config errors, SIGTERM/SIGINT) |
 
-CI runs lint, tests with coverage thresholds and `npm audit` on Node 22 and 24 for every push.
+CI runs lint, tests with coverage thresholds and `pnpm audit` on Node 22 and 24 for every push.
 
 ### ♿ Accessibility (built to WCAG 2.2 AA)
 
 - Semantic landmarks, a skip link, a single `h1` and headings without skipped levels (all checked by tests).
 - Every control has a label. Radio and checkbox groups use `fieldset` and `legend`, and the budget table has a caption and scoped headers.
-- Errors are linked with `aria-describedby` and `aria-invalid`, and focus moves to the first invalid field. Status updates use a polite live region, and focus moves to the results when they are ready.
+- Validation problems appear in an **error summary** (`role="alert"`) that takes focus and links to each field, and each field is marked with `aria-invalid` and described by its own message. Status updates use a polite live region, and focus moves to the results when they are ready.
 - The submit button uses `aria-disabled` while busy, so keyboard focus is never lost.
-- Fully keyboard-operable, with visible focus rings. Text contrast is ≥ 4.5:1 in both light and dark themes.
-- Respects `prefers-color-scheme` and `prefers-reduced-motion`. Responsive down to phone width, with a print stylesheet.
+- Fully keyboard-operable, with visible focus rings drawn around whole choice chips (the real hit targets). Text contrast is ≥ 4.5:1 in both light and dark themes.
+- **Light, dark or system theme**, chosen with a labelled radio group in the header and remembered in the browser; the saved choice is applied before the first paint. Also respects `prefers-reduced-motion` and **forced colors** (Windows High Contrast keeps the budget bars, selected chips and card edges visible). Responsive down to phone width, with a print stylesheet and a plain-text export.
 
 ### ⚡ Efficiency
 
 - Two runtime dependencies (the Anthropic SDK and Zod); the server uses Node's built-in `http`.
 - The rules engine is pure and runs in about a millisecond; 2,000 generated plans take well under a second in tests.
 - One LLM call per plan, at low effort, cached for an hour, and skipped entirely when AI is off.
-- Static assets are held in memory, and the frontend has no framework or build step.
+- Static assets are held in memory with content-hash ETags, so a revisit costs a 304 with no body. The frontend has no framework or build step.
 - Bounded memory everywhere: the LRU cache holds at most 100 entries and the rate limiter at most 10,000 clients.
 
 ## Assumptions
