@@ -298,6 +298,7 @@ function renderVendors(vendors, planKey) {
   const storageKey = `vendors:${planKey}`;
   const done = store.get(storageKey);
   const progress = document.getElementById("vendor-progress");
+
   const updateProgress = () => {
     const count = vendors.filter((vendor) => done[vendor.id]).length;
     progress.textContent = `${count} of ${vendors.length} booked.`;
@@ -486,7 +487,9 @@ function initHeroCta() {
     }
     event.preventDefault();
 
-    const prefersReducedMotion = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)").matches : false;
+    const prefersReducedMotion =
+      (window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)").matches : false) ||
+      document.documentElement.dataset.motion === "reduce";
 
     const shiftFocusToForm = () => {
       formHeading.focus({ preventScroll: true });
@@ -542,6 +545,83 @@ function initThemeSwitch() {
   }
 }
 
+// ---- Accessibility Preferences ---------------------------------------------
+
+const TEXT_SIZES = ["normal", "large"];
+const CONTRAST_MODES = ["normal", "high"];
+const MOTION_MODES = ["system", "reduce"];
+
+/** Applies font size preference; "normal" removes the override. */
+function setTextSize(size) {
+  if (!TEXT_SIZES.includes(size)) size = "normal";
+  if (size === "large") document.documentElement.dataset.textSize = "large";
+  else delete document.documentElement.dataset.textSize;
+  try {
+    if (size === "large") localStorage.setItem("textSize", "large");
+    else localStorage.removeItem("textSize");
+  } catch { /* storage unavailable */ }
+}
+
+/** Applies contrast preference; "normal" removes the override. */
+function setContrast(mode) {
+  if (!CONTRAST_MODES.includes(mode)) mode = "normal";
+  if (mode === "high") document.documentElement.dataset.contrast = "high";
+  else delete document.documentElement.dataset.contrast;
+  try {
+    if (mode === "high") localStorage.setItem("contrast", "high");
+    else localStorage.removeItem("contrast");
+  } catch { /* storage unavailable */ }
+}
+
+/** Applies motion preference; "system" removes the override. */
+function setMotion(mode) {
+  if (mode === "reduced") mode = "reduce";
+  if (!MOTION_MODES.includes(mode)) mode = "system";
+  if (mode === "reduce") document.documentElement.dataset.motion = "reduce";
+  else delete document.documentElement.dataset.motion;
+  try {
+    if (mode === "reduce") localStorage.setItem("motion", "reduce");
+    else localStorage.removeItem("motion");
+  } catch { /* storage unavailable */ }
+}
+
+function initA11yPreferences() {
+  const currentTextSize = document.documentElement.dataset.textSize ?? "normal";
+  for (const radio of document.querySelectorAll('input[name="textSize"]')) {
+    radio.checked = radio.value === currentTextSize;
+    radio.addEventListener("change", () => setTextSize(radio.value));
+  }
+
+  const currentContrast = document.documentElement.dataset.contrast ?? "normal";
+  for (const radio of document.querySelectorAll('input[name="contrast"]')) {
+    radio.checked = radio.value === currentContrast;
+    radio.addEventListener("change", () => setContrast(radio.value));
+  }
+
+  const currentMotion = document.documentElement.dataset.motion ?? "system";
+  for (const radio of document.querySelectorAll('input[name="motion"]')) {
+    radio.checked = radio.value === currentMotion;
+    radio.addEventListener("change", () => setMotion(radio.value));
+  }
+
+  const panel = document.getElementById("a11y-panel");
+  const toggle = document.getElementById("a11y-toggle");
+  if (panel && toggle) {
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && panel.open) {
+        panel.open = false;
+        toggle.focus();
+      }
+    });
+
+    document.addEventListener("click", (event) => {
+      if (panel.open && !panel.contains(event.target)) {
+        panel.open = false;
+      }
+    });
+  }
+}
+
 // ---- Wire up --------------------------------------------------------------
 
 fields.date.min = todayIso();
@@ -554,3 +634,4 @@ syncEventType();
 initGeolocation();
 initHeroCta();
 initThemeSwitch();
+initA11yPreferences();

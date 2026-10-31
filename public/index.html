@@ -20,12 +20,49 @@
         <h1>Plan Together</h1>
         <p class="tagline">Your planning assistant for weddings, birthdays and community events.</p>
       </div>
-      <fieldset class="theme-switch" id="theme-switch">
-        <legend>Theme</legend>
-        <label class="choice"><input type="radio" name="theme" value="system" checked> System</label>
-        <label class="choice"><input type="radio" name="theme" value="light"> Light</label>
-        <label class="choice"><input type="radio" name="theme" value="dark"> Dark</label>
-      </fieldset>
+      <div class="header-controls">
+        <fieldset class="theme-switch" id="theme-switch">
+          <legend>Theme</legend>
+          <label class="choice"><input type="radio" name="theme" value="system" checked> System</label>
+          <label class="choice"><input type="radio" name="theme" value="light"> Light</label>
+          <label class="choice"><input type="radio" name="theme" value="dark"> Dark</label>
+        </fieldset>
+
+        <details class="a11y-panel" id="a11y-panel">
+          <summary class="a11y-toggle" id="a11y-toggle" aria-haspopup="true">
+            <span class="a11y-toggle-icon" aria-hidden="true">⚙️</span>
+            <span>Accessibility Options</span>
+            <span class="a11y-toggle-arrow" aria-hidden="true">▾</span>
+          </summary>
+          <div class="a11y-popover" id="a11y-popover" role="region" aria-label="Accessibility preferences">
+            <div class="a11y-group">
+              <fieldset class="a11y-fieldset" id="a11y-text-size">
+                <legend>Font size</legend>
+                <div class="a11y-choices">
+                  <label class="choice"><input type="radio" name="textSize" value="normal" checked> Normal</label>
+                  <label class="choice"><input type="radio" name="textSize" value="large"> Large</label>
+                </div>
+              </fieldset>
+
+              <fieldset class="a11y-fieldset" id="a11y-contrast">
+                <legend>Contrast mode</legend>
+                <div class="a11y-choices">
+                  <label class="choice"><input type="radio" name="contrast" value="normal" checked> Normal</label>
+                  <label class="choice"><input type="radio" name="contrast" value="high"> High Contrast</label>
+                </div>
+              </fieldset>
+
+              <fieldset class="a11y-fieldset" id="a11y-motion">
+                <legend>Motion preference</legend>
+                <div class="a11y-choices">
+                  <label class="choice"><input type="radio" name="motion" value="system" checked> System</label>
+                  <label class="choice"><input type="radio" name="motion" value="reduce"> Reduced</label>
+                </div>
+              </fieldset>
+            </div>
+          </div>
+        </details>
+      </div>
     </div>
   </header>
 

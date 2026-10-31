@@ -722,3 +722,133 @@ describe("landing page hero and scroll", () => {
     window.close();
   });
 });
+
+describe("accessibility preferences toolbar", () => {
+  test("font size switch defaults to normal and updates dataset and storage when toggled", async () => {
+    const window = await openPage();
+    const page = driver(window);
+    const root = window.document.documentElement;
+    assert.equal(root.dataset.textSize, undefined);
+    assert.equal(page.$('input[name="textSize"][value="normal"]').checked, true);
+
+    page.check('input[name="textSize"][value="large"]');
+    assert.equal(root.dataset.textSize, "large");
+    assert.equal(root.getAttribute("data-text-size"), "large");
+    assert.equal(window.localStorage.getItem("textSize"), "large");
+
+    page.check('input[name="textSize"][value="normal"]');
+    assert.equal(root.dataset.textSize, undefined);
+    assert.equal(root.hasAttribute("data-text-size"), false);
+    assert.equal(window.localStorage.getItem("textSize"), null);
+    window.close();
+  });
+
+  test("contrast switch defaults to normal and updates dataset and storage when toggled", async () => {
+    const window = await openPage();
+    const page = driver(window);
+    const root = window.document.documentElement;
+    assert.equal(root.dataset.contrast, undefined);
+    assert.equal(page.$('input[name="contrast"][value="normal"]').checked, true);
+
+    page.check('input[name="contrast"][value="high"]');
+    assert.equal(root.dataset.contrast, "high");
+    assert.equal(root.getAttribute("data-contrast"), "high");
+    assert.equal(window.localStorage.getItem("contrast"), "high");
+
+    page.check('input[name="contrast"][value="normal"]');
+    assert.equal(root.dataset.contrast, undefined);
+    assert.equal(root.hasAttribute("data-contrast"), false);
+    assert.equal(window.localStorage.getItem("contrast"), null);
+    window.close();
+  });
+
+  test("motion switch defaults to system and updates dataset and storage when toggled", async () => {
+    const window = await openPage();
+    const page = driver(window);
+    const root = window.document.documentElement;
+    assert.equal(root.dataset.motion, undefined);
+    assert.equal(page.$('input[name="motion"][value="system"]').checked, true);
+
+    page.check('input[name="motion"][value="reduce"]');
+    assert.equal(root.dataset.motion, "reduce");
+    assert.equal(root.getAttribute("data-motion"), "reduce");
+    assert.equal(window.localStorage.getItem("motion"), "reduce");
+
+    page.check('input[name="motion"][value="system"]');
+    assert.equal(root.dataset.motion, undefined);
+    assert.equal(root.hasAttribute("data-motion"), false);
+    assert.equal(window.localStorage.getItem("motion"), null);
+    window.close();
+  });
+
+  test("saved accessibility preferences are applied before app script runs and reflected in controls", async () => {
+    const window = await openPage({
+      storage: { textSize: "large", contrast: "high", motion: "reduce" },
+    });
+    const root = window.document.documentElement;
+    assert.equal(root.dataset.textSize, "large");
+    assert.equal(root.dataset.contrast, "high");
+    assert.equal(root.dataset.motion, "reduce");
+
+    assert.equal(window.document.querySelector('input[name="textSize"][value="large"]').checked, true);
+    assert.equal(window.document.querySelector('input[name="contrast"][value="high"]').checked, true);
+    assert.equal(window.document.querySelector('input[name="motion"][value="reduce"]').checked, true);
+    window.close();
+  });
+
+  test("unknown saved accessibility values are ignored", async () => {
+    const window = await openPage({
+      storage: { textSize: "gigantic", contrast: "ultra", motion: "spinning" },
+    });
+    const root = window.document.documentElement;
+    assert.equal(root.dataset.textSize, undefined);
+    assert.equal(root.dataset.contrast, undefined);
+    assert.equal(root.dataset.motion, undefined);
+
+    assert.equal(window.document.querySelector('input[name="textSize"][value="normal"]').checked, true);
+    assert.equal(window.document.querySelector('input[name="contrast"][value="normal"]').checked, true);
+    assert.equal(window.document.querySelector('input[name="motion"][value="system"]').checked, true);
+    window.close();
+  });
+
+  test("accessibility panel is expandable with keyboard escape and click-outside dismissal", async () => {
+    const window = await openPage();
+    const panel = window.document.getElementById("a11y-panel");
+    const toggle = window.document.getElementById("a11y-toggle");
+    assert.equal(panel.open, false);
+
+    panel.open = true;
+    const evt = new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true });
+    window.document.dispatchEvent(evt);
+    assert.equal(panel.open, false);
+    assert.equal(window.document.activeElement, toggle);
+
+    panel.open = true;
+    const clickEvt = new window.MouseEvent("click", { bubbles: true });
+    window.document.body.dispatchEvent(clickEvt);
+    assert.equal(panel.open, false);
+    window.close();
+  });
+
+  test("reduced motion preference in dataset overrides hero scroll behavior", async () => {
+    const window = await openPage({ storage: { motion: "reduce" } });
+    const cta = window.document.getElementById("start-planning-cta");
+    const heading = window.document.getElementById("form-heading");
+    let scrollOptions = null;
+    window.document.getElementById("form-card").scrollIntoView = (opts) => { scrollOptions = opts; };
+
+    cta.click();
+    assert.ok(scrollOptions);
+    assert.equal(scrollOptions.behavior, "auto");
+    assert.equal(scrollOptions.block, "start");
+    assert.equal(window.document.activeElement, heading);
+    window.close();
+  });
+
+  test("stylesheet contains rules for text-size, contrast, and motion dataset attributes", async () => {
+    const css = await (await fetch(`${base}/styles.css`)).text();
+    assert.match(css, /:root\[data-text-size="large"\]/);
+    assert.match(css, /:root\[data-contrast="high"\]/);
+    assert.match(css, /:root\[data-motion="reduce"\]/);
+  });
+});
