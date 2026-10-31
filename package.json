@@ -14,8 +14,9 @@
     "lint": "eslint .",
     "test": "node --test",
     "test:coverage": "node --test --experimental-test-coverage --test-coverage-lines=98 --test-coverage-branches=95 --test-coverage-functions=98",
-    "check": "npm run lint && npm run test:coverage"
+    "check": "pnpm run lint && pnpm run test:coverage"
   },
+  "packageManager": "pnpm@11.25.0",
   "dependencies": {
     "@anthropic-ai/sdk": "0.131.0",
     "zod": "4.6.5"
