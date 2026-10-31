@@ -49,6 +49,7 @@ describe("HTTP API", () => {
       ["/index.html", /text\/html/, /<main id="main"/],
       ["/styles.css", /text\/css/, /:root/],
       ["/app.js", /text\/javascript/, /use strict/],
+      ["/theme.js", /text\/javascript/, /localStorage/],
       ["/favicon.svg", /image\/svg\+xml/, /<svg/],
     ];
     for (const [path, type, body] of files) {
@@ -60,6 +61,22 @@ describe("HTTP API", () => {
         assert.match(await res.text(), body);
       });
     }
+
+    test("sends an ETag and answers a matching If-None-Match with 304 and no body", async () => {
+      const first = await fetch(`${app.base}/app.js`);
+      const etag = first.headers.get("etag");
+      assert.match(etag, /^"[A-Za-z0-9_-]{16}"$/);
+      const res = await fetch(`${app.base}/app.js`, { headers: { "If-None-Match": etag } });
+      assert.equal(res.status, 304);
+      assert.equal(res.headers.get("etag"), etag);
+      assert.equal(await res.text(), "");
+      assert.equal((await fetch(`${app.base}/app.js`, { headers: { "If-None-Match": '"stale"' } })).status, 200);
+    });
+
+    test("different files have different ETags", async () => {
+      const tags = await Promise.all(["/", "/styles.css", "/app.js"].map(async (path) => (await fetch(`${app.base}${path}`)).headers.get("etag")));
+      assert.equal(new Set(tags).size, tags.length);
+    });
 
     test("ignores query strings", async () => {
       assert.equal((await fetch(`${app.base}/styles.css?v=2`)).status, 200);
@@ -157,6 +174,60 @@ describe("HTTP API", () => {
 
     test("rejects oversized bodies by content-length", async () => {
       assert.equal((await post(JSON.stringify({ notes: "x".repeat(20_000) }))).status, 413);
+    });
+
+    test("handles pre-parsed body in serverless environments", async () => {
+      const handler = createApp({ ideasService: createIdeasService({ client: null }), now: () => NOW });
+      const makeMock = (body) => {
+        let statusCode;
+        let responseBody;
+        return {
+          req: {
+            url: "/api/plan",
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body,
+            socket: { remoteAddress: "127.0.0.1" },
+          },
+          res: {
+            writeHead(status) { statusCode = status; },
+            end(payload) { responseBody = payload; },
+          },
+          getResult: () => ({ status: statusCode, json: () => JSON.parse(responseBody) }),
+        };
+      };
+
+      const mockObj = makeMock(request());
+      await handler(mockObj.req, mockObj.res);
+      assert.equal(mockObj.getResult().status, 200);
+
+      const mockStr = makeMock(JSON.stringify(request()));
+      await handler(mockStr.req, mockStr.res);
+      assert.equal(mockStr.getResult().status, 200);
+
+      const mockErr = makeMock("{invalid-json");
+      await handler(mockErr.req, mockErr.res);
+      assert.equal(mockErr.getResult().status, 400);
+    });
+
+    test("falls back to unknown client bucket when socket has no remoteAddress", async () => {
+      const handler = createApp({ ideasService: createIdeasService({ client: null }), now: () => NOW });
+      let status = 200;
+      const mock = {
+        req: {
+          url: "/api/plan",
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: request(),
+          socket: {},
+        },
+        res: {
+          writeHead(code) { status = code; },
+          end() {},
+        },
+      };
+      await handler(mock.req, mock.res);
+      assert.equal(status, 200);
     });
 
     test("rejects oversized chunked bodies while streaming", async () => {

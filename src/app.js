@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { buildPlan } from "./planner/index.js";
@@ -21,14 +22,18 @@ const SECURITY_HEADERS = {
 
 const CONTENT_TYPES = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".svg": "image/svg+xml" };
 
-/** Allow-listed static files, loaded once at startup. No user path ever touches the file system. */
+/**
+ * Allow-listed static files, loaded once at startup with a content hash as
+ * ETag. No user path ever touches the file system.
+ */
 function loadStaticFiles() {
-  const routes = { "/": "index.html", "/index.html": "index.html", "/styles.css": "styles.css", "/app.js": "app.js", "/favicon.svg": "favicon.svg" };
+  const routes = { "/": "index.html", "/index.html": "index.html", "/styles.css": "styles.css", "/app.js": "app.js", "/theme.js": "theme.js", "/favicon.svg": "favicon.svg" };
   return new Map(
-    Object.entries(routes).map(([route, file]) => [
-      route,
-      { body: readFileSync(path.join(PUBLIC_DIR, file)), type: CONTENT_TYPES[path.extname(file)] },
-    ]),
+    Object.entries(routes).map(([route, file]) => {
+      const body = readFileSync(path.join(PUBLIC_DIR, file));
+      const etag = `"${createHash("sha256").update(body).digest("base64url").slice(0, 16)}"`;
+      return [route, { body, etag, type: CONTENT_TYPES[path.extname(file)] }];
+    }),
   );
 }
 
@@ -61,7 +66,7 @@ function pathnameOf(req) {
  */
 function clientKey(req, trustProxy) {
   const forwarded = trustProxy ? req.headers["x-forwarded-for"]?.split(",").at(-1).trim() : "";
-  return clientBucket(forwarded || req.socket.remoteAddress || "unknown");
+  return clientBucket(forwarded || req.socket?.remoteAddress || "unknown");
 }
 
 /** True for `application/json`, with any parameters and in any letter case (RFC 9110 §8.3.1). */
@@ -75,6 +80,16 @@ async function readJsonBody(req) {
   }
   if (Number(req.headers["content-length"] ?? 0) > MAX_BODY_BYTES) {
     throw new HttpError(413, "Request body too large");
+  }
+  if (req.body !== undefined) {
+    if (typeof req.body === "string") {
+      try {
+        return JSON.parse(req.body);
+      } catch {
+        throw new HttpError(400, "Body must be valid JSON");
+      }
+    }
+    return req.body;
   }
   const chunks = [];
   let size = 0;
@@ -97,7 +112,11 @@ async function readJsonBody(req) {
  * Routes:
  *  - `POST /api/plan`  validated plan request → plan + ideas (rate limited)
  *  - `GET  /api/health` liveness and whether AI ideas are enabled
- *  - `GET  /`, `/styles.css`, `/app.js`, `/favicon.svg` static frontend
+ *  - `GET  /`, `/styles.css`, `/app.js`, `/theme.js`, `/favicon.svg` static frontend (ETag / 304)
+ *
+ * Works both as a Node `http` listener and as a serverless handler: when a
+ * platform has already parsed the JSON body into `req.body`, that is used
+ * instead of reading the stream.
  *
  * @param {object} deps
  * @param {{ enabled: boolean, getIdeas: Function }} deps.ideasService
@@ -140,7 +159,11 @@ export function createApp({ ideasService, rateLimiter = new RateLimiter(), now =
       }
       const file = staticFiles.get(pathname);
       if (file && (req.method === "GET" || req.method === "HEAD")) {
-        return send(res, 200, req.method === "HEAD" ? "" : file.body, file.type, { "Cache-Control": "no-cache" });
+        // `no-cache` makes browsers revalidate every time; a matching ETag then
+        // costs a 304 with no body instead of a full transfer.
+        const headers = { "Cache-Control": "no-cache", ETag: file.etag };
+        if (req.headers["if-none-match"] === file.etag) return send(res, 304, "", file.type, headers);
+        return send(res, 200, req.method === "HEAD" ? "" : file.body, file.type, headers);
       }
       throw new HttpError(404, "Not found");
     } catch (error) {
@@ -153,3 +176,4 @@ export function createApp({ ideasService, rateLimiter = new RateLimiter(), now =
     }
   };
 }
+

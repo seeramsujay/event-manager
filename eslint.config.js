@@ -15,7 +15,7 @@ export default [
     },
   },
   {
-    files: ["src/**/*.js", "test/**/*.js", "eslint.config.js"],
+    files: ["src/**/*.js", "api/**/*.js", "test/**/*.js", "eslint.config.js"],
     languageOptions: { ecmaVersion: 2024, sourceType: "module", globals: globals.node },
   },
   {

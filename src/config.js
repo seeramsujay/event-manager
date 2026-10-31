@@ -6,7 +6,7 @@ import { DEFAULT_MODEL } from "./ai/ideas.js";
  * @property {string} host                Interface to bind; 127.0.0.1 keeps the app local by default.
  * @property {string} model               Claude model id used for idea generation.
  * @property {number} rateLimitPerMinute  Plan requests allowed per client per minute.
- * @property {boolean} trustProxy         Use the first X-Forwarded-For address as the client id.
+ * @property {boolean} trustProxy         Use the proxy-appended (right-most) X-Forwarded-For address as the client id.
  * @property {boolean} hasCredentials     Whether Anthropic credentials are present.
  */
 
