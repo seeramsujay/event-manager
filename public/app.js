@@ -231,12 +231,28 @@ function renderSummary({ summary, budget }) {
     ["Per guest", `${formatMoney(budget.perGuest, budget.currency)} (${budget.tier})`],
   ];
   document.getElementById("summary").replaceChildren(
-    ...stats.filter(Boolean).map(([label, value]) =>
-      el("dl", { className: "stat" }, [
+    ...stats.filter(Boolean).map(([label, value]) => {
+      const ddProps = { className: "stat-value" };
+      let children = [];
+      if (label === "Location" && value) {
+        ddProps.text = value;
+        const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(value)}`;
+        const link = el("a", {
+          href: mapUrl,
+          target: "_blank",
+          rel: "noopener noreferrer",
+          className: "map-link",
+          "aria-label": `View ${value} on Google Maps (opens in new tab)`,
+        }, [el("span", { "aria-hidden": "true" }, " 🗺️ "), "Maps ↗"]);
+        children = [link];
+      } else {
+        ddProps.text = value;
+      }
+      return el("dl", { className: "stat" }, [
         el("dt", { className: "stat-label", text: label }),
-        el("dd", { className: "stat-value", text: value }),
-      ]),
-    ),
+        el("dd", ddProps, children),
+      ]);
+    }),
   );
   const heading = document.getElementById("results-heading");
   if (heading) heading.textContent = summary.eventName ? `Your plan: ${summary.eventName}` : "Your plan";
@@ -393,11 +409,47 @@ function renderVendors(vendors, planKey) {
     progress.textContent = `${count} of ${vendors.length} booked.`;
   };
 
+  const loc = currentPlan?.summary?.location;
+  const isMicro = (currentPlan?.summary?.guestCount ?? 100) <= 50;
+
   document.getElementById("vendors").replaceChildren(
     ...vendors.map((vendor) => {
       const id = `vendor-${vendor.id}`;
       const checkbox = el("input", { type: "checkbox", id, "aria-describedby": `${id}-tip` });
       checkbox.checked = Boolean(done[vendor.id]);
+
+      let mapSearchLink = null;
+      if (loc && (vendor.category === "venue" || vendor.id === "venue" || vendor.category === "catering" || vendor.id === "caterer")) {
+        const isVenue = vendor.category === "venue" || vendor.id === "venue";
+        const queryTerm = isVenue
+          ? (isMicro ? `private dining restaurants in ${loc}` : `event venues in ${loc}`)
+          : `catering services in ${loc}`;
+        const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(queryTerm)}`;
+        const linkLabel = isVenue
+          ? (isMicro ? `Find private dining in ${loc} on Google Maps` : `Find venues in ${loc} on Google Maps`)
+          : `Find caterers in ${loc} on Google Maps`;
+
+        mapSearchLink = el(
+          "p",
+          { className: "vendor-map-wrap" },
+          el(
+            "a",
+            {
+              href: mapUrl,
+              target: "_blank",
+              rel: "noopener noreferrer",
+              className: "vendor-map-link",
+              "aria-label": `${linkLabel} (opens in new tab)`,
+            },
+            [
+              el("span", { "aria-hidden": "true" }, "📍 "),
+              linkLabel,
+              el("span", { "aria-hidden": "true" }, " ↗"),
+            ],
+          ),
+        );
+      }
+
       const item = el("li", { className: `vendor${checkbox.checked ? " done" : ""}` }, [
         el("label", { for: id }, [
           checkbox,
@@ -408,6 +460,7 @@ function renderVendors(vendors, planKey) {
           vendor.bookNow ? el("strong", { className: "urgent", text: "Book now. " }) : `Book by ${formatDate(vendor.bookBy)}. `,
           vendor.tip,
         ]),
+        mapSearchLink,
       ]);
       checkbox.addEventListener("change", () => {
         done[vendor.id] = checkbox.checked;
@@ -561,9 +614,14 @@ function initGeolocation() {
       },
       (err) => {
         geoBtn.removeAttribute("aria-disabled");
-        const msg = err.code === 1
-          ? "Location permission denied (blocked in browser). Click the lock or tune icon in your address bar to allow it, or type your city directly below."
-          : "Could not determine your location.";
+        let msg = "Could not determine your location.";
+        if (err.code === 1) {
+          msg = "Location permission denied (blocked in browser). Click the lock or tune icon in your address bar to allow it, or type your city directly below.";
+        } else if (err.code === 2) {
+          msg = "Location unavailable. Please type your city directly below.";
+        } else if (err.code === 3) {
+          msg = "Location request timed out. Please try again or type your city directly below.";
+        }
         setGeoStatus(msg, true);
         fields.location.focus();
       },

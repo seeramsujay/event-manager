@@ -106,6 +106,7 @@ describe("HTTP API", () => {
         assert.equal(res.headers.get("x-frame-options"), "DENY");
         assert.equal(res.headers.get("referrer-policy"), "no-referrer");
         assert.match(res.headers.get("permissions-policy"), /camera=\(\)/);
+        assert.match(res.headers.get("permissions-policy"), /geolocation=\(self\)/);
         assert.equal(res.headers.get("cross-origin-opener-policy"), "same-origin");
       });
     }

@@ -684,6 +684,30 @@ describe("geolocation feature", () => {
     page.set("date", futureDate(60));
     await page.submitAndWait();
     assert.match(page.text("#summary"), /Barcelona, Spain/);
+    const summaryMapLink = window.document.querySelector("#summary .map-link");
+    assert.ok(summaryMapLink);
+    assert.match(summaryMapLink.href, /maps\/search/);
+    assert.match(summaryMapLink.href, /Barcelona/);
+    const vendorMapLinks = window.document.querySelectorAll("#vendors .vendor-map-link");
+    assert.ok(vendorMapLinks.length >= 1);
+    window.close();
+  });
+
+  test("handles location unavailable and timeout error codes", async () => {
+    const window = await openPage();
+    window.navigator.geolocation = {
+      getCurrentPosition: (_success, error) => error({ code: 2, message: "Position unavailable" }),
+    };
+    const geoBtn = window.document.getElementById("geo-btn");
+    geoBtn.click();
+    const status = window.document.getElementById("geo-status");
+    assert.match(status.textContent, /Location unavailable/i);
+
+    window.navigator.geolocation = {
+      getCurrentPosition: (_success, error) => error({ code: 3, message: "Timeout" }),
+    };
+    geoBtn.click();
+    assert.match(status.textContent, /timed out/i);
     window.close();
   });
 });

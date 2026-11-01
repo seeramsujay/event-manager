@@ -615,6 +615,22 @@ tbody tr:last-child { font-weight: 700; }
 .vendor label { display: flex; gap: 0.6rem; align-items: center; font-weight: 600; cursor: pointer; }
 .vendor input[type="checkbox"] { flex-shrink: 0; width: auto; margin: 0; }
 .vendor .hint { margin-left: 1.75rem; }
+.vendor-map-wrap { margin: 0.35rem 0 0 1.75rem; }
+.vendor-map-link,
+.map-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--focus);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.vendor-map-link:hover,
+.map-link:hover {
+  text-decoration: none;
+}
 .vendor.done label { text-decoration: line-through; color: var(--muted); }
 .priority-essential { color: var(--critical); }
 .priority-recommended { color: var(--info); }
@@ -996,6 +1012,11 @@ tbody tr:last-child { font-weight: 700; }
     font-size: 0.82rem !important;
     margin-top: 0.15rem !important;
     color: #555 !important;
+  }
+
+  .vendor-map-wrap,
+  .map-link {
+    display: none !important;
   }
 
   /* Ideas */
