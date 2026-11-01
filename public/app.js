@@ -20,7 +20,6 @@ const REQUEST_TIMEOUT_MS = 75_000;
 let inFlight = false;
 /** The plan currently on screen, kept for the text export. */
 let currentPlan = null;
-
 /**
  * Creates an element. `props.text` sets textContent, `props.style` takes an
  * object (CSSOM is allowed by the CSP; inline style attributes are not), and
@@ -258,7 +257,90 @@ function renderInsights(insights) {
   );
 }
 
+const PIE_COLORS = [
+  "#6b2f8f",
+  "#1a5fb4",
+  "#26a269",
+  "#e5a50a",
+  "#c64600",
+  "#a4161a",
+  "#865e3c",
+  "#77767b",
+  "#2ca02c",
+  "#8a5300",
+];
+
+function renderBudgetPie(items, currency) {
+  const svg = document.getElementById("budget-pie");
+  if (!svg) return;
+  svg.replaceChildren();
+
+  const totalPercent = items.reduce((sum, item) => sum + item.percent, 0);
+  if (totalPercent <= 0) return;
+
+  const cx = 60;
+  const cy = 60;
+  const r = 48;
+  const innerR = 24;
+  let currentAngle = -Math.PI / 2;
+  const ns = "http://www.w3.org/2000/svg";
+
+  items.forEach((item, index) => {
+    if (item.percent <= 0) return;
+
+    const sliceAngle = (item.percent / totalPercent) * 2 * Math.PI;
+    const endAngle = currentAngle + sliceAngle;
+    const path = document.createElementNS(ns, "path");
+    const color = PIE_COLORS[index % PIE_COLORS.length];
+
+    if (item.percent >= 99.9) {
+      path.setAttribute("d", `M ${cx} ${cy - r} A ${r} ${r} 0 1 1 ${cx - 0.01} ${cy - r} Z`);
+    } else {
+      const x1 = cx + r * Math.cos(currentAngle);
+      const y1 = cy + r * Math.sin(currentAngle);
+      const x2 = cx + r * Math.cos(endAngle);
+      const y2 = cy + r * Math.sin(endAngle);
+
+      const ix1 = cx + innerR * Math.cos(endAngle);
+      const iy1 = cy + innerR * Math.sin(endAngle);
+      const ix2 = cx + innerR * Math.cos(currentAngle);
+      const iy2 = cy + innerR * Math.sin(currentAngle);
+
+      const largeArc = sliceAngle > Math.PI ? 1 : 0;
+      const d = [
+        `M ${x1.toFixed(2)} ${y1.toFixed(2)}`,
+        `A ${r} ${r} 0 ${largeArc} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`,
+        `L ${ix1.toFixed(2)} ${iy1.toFixed(2)}`,
+        `A ${innerR} ${innerR} 0 ${largeArc} 0 ${ix2.toFixed(2)} ${iy2.toFixed(2)}`,
+        "Z",
+      ].join(" ");
+      path.setAttribute("d", d);
+    }
+
+    path.setAttribute("fill", color);
+    path.setAttribute("stroke", "var(--surface)");
+    path.setAttribute("stroke-width", "1.5");
+    path.setAttribute("class", "pie-slice");
+
+    const title = document.createElementNS(ns, "title");
+    title.textContent = `${item.label}: ${item.percent}% (${formatMoney(item.amount, currency)})`;
+    path.append(title);
+
+    svg.append(path);
+    currentAngle = endAngle;
+  });
+
+  const centerText = document.createElementNS(ns, "text");
+  centerText.setAttribute("x", String(cx));
+  centerText.setAttribute("y", String(cy + 4));
+  centerText.setAttribute("text-anchor", "middle");
+  centerText.setAttribute("class", "pie-center-label");
+  centerText.textContent = "100%";
+  svg.append(centerText);
+}
+
 function renderBudget(budget) {
+  renderBudgetPie(budget.items, budget.currency);
   const max = Math.max(...budget.items.map((item) => item.percent));
   document.getElementById("budget-meta").textContent =
     `Budget tier: ${budget.tier}. Categories you prioritized are marked; a contingency reserve covers surprises.`;

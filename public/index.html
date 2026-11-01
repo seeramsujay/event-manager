@@ -7,6 +7,7 @@
   <meta name="description" content="Plan weddings, birthdays and community events with budgets, timelines, vendor checklists and AI-personalized ideas.">
   <title>Plan Together — Event Planning Assistant</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="/">
   <link rel="stylesheet" href="/styles.css">
   <script src="/theme.js"></script>
   <script src="/app.js" defer></script>
@@ -247,12 +248,20 @@
       <section class="card" aria-labelledby="budget-heading">
         <h3 id="budget-heading">Budget breakdown</h3>
         <p id="budget-meta" class="hint"></p>
-        <div class="table-wrap">
-          <table id="budget-table">
-            <caption class="visually-hidden">Suggested spend per category</caption>
-            <thead><tr><th scope="col">Category</th><th scope="col">Share</th><th scope="col" class="num">Amount</th></tr></thead>
-            <tbody></tbody>
-          </table>
+        <div class="budget-layout">
+          <div class="budget-chart-panel" id="budget-chart-panel">
+            <div class="pie-chart-wrap" id="pie-chart-wrap">
+              <svg id="budget-pie" viewBox="0 0 120 120" class="budget-pie" role="img" aria-label="Budget distribution pie chart">
+              </svg>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table id="budget-table">
+              <caption class="visually-hidden">Suggested spend per category</caption>
+              <thead><tr><th scope="col">Category</th><th scope="col">Share</th><th scope="col" class="num">Amount</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
         </div>
       </section>
 

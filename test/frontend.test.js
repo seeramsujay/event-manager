@@ -235,6 +235,22 @@ describe("plan rendering", () => {
     window.close();
   });
 
+  test("budget pie chart renders SVG slices with accessible titles and center label", async () => {
+    const window = await openPage();
+    const page = driver(window);
+    page.set("date", futureDate(60));
+    await page.submitAndWait();
+    const svg = page.$("#budget-pie");
+    assert.ok(svg);
+    const slices = [...svg.querySelectorAll("path.pie-slice")];
+    assert.ok(slices.length > 5);
+    assert.ok(slices.every((s) => s.getAttribute("d") && s.getAttribute("fill")));
+    const center = svg.querySelector("text.pie-center-label");
+    assert.ok(center);
+    assert.equal(center.textContent, "100%");
+    window.close();
+  });
+
   test("AI text is rendered as text, never as markup", async () => {
     const window = await openPage();
     const page = driver(window);
