@@ -561,8 +561,9 @@ function initGeolocation() {
       },
       (err) => {
         geoBtn.removeAttribute("aria-disabled");
-        const msg = err.code === 1 ? "Location permission denied. Please enter it manually." : "Could not determine your location.";
+        const msg = err.code === 1 ? "Location permission denied. You can type your city directly in the box." : "Could not determine your location.";
         setGeoStatus(msg, true);
+        fields.location.focus();
       },
       { timeout: 10_000, maximumAge: 300_000 },
     );
