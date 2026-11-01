@@ -33,12 +33,16 @@ function boolean(value, name) {
  * @returns {AppConfig}
  */
 export function loadConfig(env = process.env) {
+  const geminiKey = env.GEMINI_API_KEY?.trim() || env.GOOGLE_API_KEY?.trim();
+  const anthropicKey = env.ANTHROPIC_API_KEY?.trim() || env.ANTHROPIC_AUTH_TOKEN?.trim();
+  const model = env.GEMINI_MODEL?.trim() || env.ANTHROPIC_MODEL?.trim() || DEFAULT_MODEL;
+
   return {
     port: integer(env.PORT, 3000, 0, 65_535, "PORT"),
     host: env.HOST?.trim() || "127.0.0.1",
-    model: env.ANTHROPIC_MODEL?.trim() || DEFAULT_MODEL,
+    model,
     rateLimitPerMinute: integer(env.RATE_LIMIT_PER_MINUTE, 20, 1, 10_000, "RATE_LIMIT_PER_MINUTE"),
     trustProxy: boolean(env.TRUST_PROXY, "TRUST_PROXY"),
-    hasCredentials: Boolean(env.ANTHROPIC_API_KEY || env.ANTHROPIC_AUTH_TOKEN),
+    hasCredentials: Boolean(geminiKey || anthropicKey),
   };
 }

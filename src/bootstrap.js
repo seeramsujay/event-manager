@@ -4,6 +4,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createApp } from "./app.js";
 import { createIdeasService } from "./ai/ideas.js";
+import { createGeminiClient } from "./ai/gemini.js";
 import { createGeocodeService } from "./lib/geocode.js";
 import { loadConfig } from "./config.js";
 import { RateLimiter } from "./lib/rateLimiter.js";
@@ -25,7 +26,15 @@ import { RateLimiter } from "./lib/rateLimiter.js";
 export function createAppFromEnv(env = process.env) {
   const config = loadConfig(env);
   // 30 s per attempt and one retry bound the worst case well under the browser timeout.
-  const client = config.hasCredentials ? new Anthropic({ timeout: 30_000, maxRetries: 1 }) : null;
+  const geminiKey = env.GEMINI_API_KEY?.trim() || env.GOOGLE_API_KEY?.trim();
+  const anthropicKey = env.ANTHROPIC_API_KEY?.trim() || env.ANTHROPIC_AUTH_TOKEN?.trim();
+
+  let client = null;
+  if (geminiKey) {
+    client = createGeminiClient({ apiKey: geminiKey, timeout: 30_000 });
+  } else if (anthropicKey) {
+    client = new Anthropic({ timeout: 30_000, maxRetries: 1 });
+  }
   const ideasService = createIdeasService({ client, model: config.model });
   const rateLimiter = new RateLimiter({ limit: config.rateLimitPerMinute });
   const geocodeService = createGeocodeService();

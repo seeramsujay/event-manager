@@ -37,6 +37,15 @@ describe("loadConfig", () => {
     assert.equal(loadConfig({ ANTHROPIC_AUTH_TOKEN: "token" }).hasCredentials, true);
   });
 
+  test("detects GEMINI_API_KEY as credentials", () => {
+    assert.equal(loadConfig({ GEMINI_API_KEY: "test-gemini-key" }).hasCredentials, true);
+  });
+
+  test("uses GEMINI_MODEL when provided", () => {
+    const config = loadConfig({ GEMINI_MODEL: "gemini-2.0-flash" });
+    assert.equal(config.model, "gemini-2.0-flash");
+  });
+
   test("accepts port 0 for a random free port", () => {
     assert.equal(loadConfig({ PORT: "0" }).port, 0);
   });

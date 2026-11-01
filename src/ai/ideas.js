@@ -6,7 +6,7 @@ import { z } from "zod";
 import { BUDGET_TIPS, EVENT_PROFILES } from "../planner/catalog.js";
 import { TtlCache } from "../lib/ttlCache.js";
 
-export const DEFAULT_MODEL = "claude-opus-5-5";
+export const DEFAULT_MODEL = "gemini-2.0-flash-lite";
 const MAX_ITEMS = 5;
 
 /**
@@ -47,6 +47,29 @@ export const IDEAS_JSON_SCHEMA = {
     activities: stringList,
     budgetTips: stringList,
     personalTouch: { type: "string" },
+  },
+};
+
+export const GEMINI_IDEAS_SCHEMA = {
+  type: "OBJECT",
+  required: ["themes", "decor", "food", "activities", "budgetTips", "personalTouch"],
+  properties: {
+    themes: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        required: ["name", "description"],
+        properties: {
+          name: { type: "STRING" },
+          description: { type: "STRING" },
+        },
+      },
+    },
+    decor: { type: "ARRAY", items: { type: "STRING" } },
+    food: { type: "ARRAY", items: { type: "STRING" } },
+    activities: { type: "ARRAY", items: { type: "STRING" } },
+    budgetTips: { type: "ARRAY", items: { type: "STRING" } },
+    personalTouch: { type: "STRING" },
   },
 };
 
@@ -189,10 +212,18 @@ export function answerText(content) {
 
 /** User-facing reason for a failed AI call. Never includes raw error details. */
 export function describeFailure(error) {
-  if (error instanceof Anthropic.RateLimitError) return "AI service is busy";
-  if (error instanceof Anthropic.AuthenticationError) return "AI service is not authorized";
-  if (error instanceof Anthropic.APIConnectionError) return "AI service is unreachable";
-  if (error instanceof Anthropic.APIError) return "AI service error";
+  if (error.status === 429 || error.name === "RateLimitError" || (Anthropic && error instanceof Anthropic.RateLimitError)) {
+    return "AI service is busy";
+  }
+  if (error.status === 401 || error.status === 403 || error.name === "AuthenticationError" || (Anthropic && error instanceof Anthropic.AuthenticationError)) {
+    return "AI service is not authorized";
+  }
+  if (error.name === "AbortError" || error.name === "TimeoutError" || error.name === "APIConnectionError" || (Anthropic && error instanceof Anthropic.APIConnectionError)) {
+    return "AI service is unreachable";
+  }
+  if ((Anthropic && error instanceof Anthropic.APIError) || (error.status && error.status >= 400)) {
+    return "AI service error";
+  }
   return "AI response could not be used";
 }
 
@@ -207,6 +238,16 @@ export function describeFailure(error) {
  */
 export function createIdeasService({ client = null, model = DEFAULT_MODEL, cache = new TtlCache(), logger = console } = {}) {
   async function generate(input, plan) {
+    if (client.type === "gemini") {
+      const text = await client.generateContent({
+        model,
+        systemPrompt: SYSTEM_PROMPT,
+        prompt: buildIdeasPrompt(input, plan),
+        schema: GEMINI_IDEAS_SCHEMA,
+      });
+      return ideasSchema.parse(JSON.parse(text));
+    }
+
     const response = await client.beta.messages.create({
       model,
       max_tokens: 16000,
