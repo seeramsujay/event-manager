@@ -630,21 +630,47 @@ button[aria-disabled="true"] { opacity: 0.6; cursor: not-allowed; }
 }
 
 .pie-slice {
-  transition: transform 0.15s ease, opacity 0.15s ease;
+  transition: transform 0.15s ease, opacity 0.15s ease, filter 0.15s ease;
   transform-origin: 60px 60px;
-  cursor: default;
+  cursor: pointer;
+  outline: none;
 }
 
-.pie-slice:hover {
-  opacity: 0.88;
-  transform: scale(1.02);
+.budget-pie.is-hovering .pie-slice:not(.is-active) {
+  opacity: 0.28;
+}
+
+.pie-slice.is-active,
+.pie-slice:focus-visible {
+  opacity: 1;
+  transform: scale(1.05);
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.25));
 }
 
 .pie-center-label {
   font-family: inherit;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 800;
   fill: var(--text);
+  pointer-events: none;
+  transition: fill 0.15s ease;
+}
+
+.pie-center-sub {
+  font-family: inherit;
+  font-size: 6px;
+  font-weight: 700;
+  fill: var(--muted);
+  pointer-events: none;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.pie-center-share {
+  font-family: inherit;
+  font-size: 7.5px;
+  font-weight: 700;
+  fill: var(--accent);
   pointer-events: none;
 }
 
@@ -654,23 +680,70 @@ th, td { padding: 0.55rem 0.75rem; border-bottom: 1px solid var(--border); }
 th.num, td.num { text-align: right; }
 tbody tr:last-child { font-weight: 700; }
 
-.bar {
-  height: 12px;
+/* Budget Table Row Interactivity & Dimming */
+#budget-table tbody tr {
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+  cursor: pointer;
+}
+
+#budget-table tbody.is-hovering tr:not(.is-active) {
+  opacity: 0.3;
+  font-weight: 400;
+}
+
+#budget-table tbody tr.is-active {
+  background-color: var(--accent-soft);
+  font-weight: 700;
+}
+
+#budget-table tbody tr.is-active th {
+  font-weight: 800;
+  color: var(--accent);
+}
+
+#budget-table tbody tr.is-active .budget-share-pct {
+  font-weight: 800;
+  color: var(--text);
+}
+
+#budget-table tbody tr.is-active .num {
+  font-weight: 800;
+  color: var(--text);
+}
+
+.budget-share-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 8rem;
+}
+
+.budget-share-cell .bar {
+  flex: 0 1 6.5rem;
+  height: 8px;
   background: var(--border);
   border-radius: 999px;
   overflow: hidden;
-  display: flex;
-  margin: 0.5rem 0 1rem;
+  margin: 0;
+  display: block;
 }
-.bar span { height: 100%; display: block; }
-.bar span:nth-child(1) { background: #6b2f8f; }
-.bar span:nth-child(2) { background: #1a5fb4; }
-.bar span:nth-child(3) { background: #26a269; }
-.bar span:nth-child(4) { background: #e5a50a; }
-.bar span:nth-child(5) { background: #c64600; }
-.bar span:nth-child(6) { background: #a4161a; }
-.bar span:nth-child(7) { background: #865e3c; }
-.bar span:nth-child(8) { background: #77767b; }
+
+.budget-share-cell .bar span {
+  height: 100%;
+  display: block;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.budget-share-pct {
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  width: 3.25rem;
+  text-align: right;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
 
 .tag { font-size: 0.75rem; background: var(--accent-soft); border-radius: 999px; padding: 0.1rem 0.5rem; margin-left: 0.4rem; white-space: nowrap; }
 
@@ -1001,17 +1074,20 @@ tbody tr:last-child { font-weight: 700; }
     font-weight: 700;
   }
 
-  /* In print, keep .bar container visible so percentage text displays, but hide the colored graphic */
-  .bar {
-    height: auto !important;
-    background: transparent !important;
-    overflow: visible !important;
-    margin: 0 !important;
-    border-radius: 0 !important;
-  }
-
+  /* In print, hide progress bars and keep percentage text cleanly visible on the side */
+  .budget-share-cell .bar,
   .bar span {
     display: none !important;
+  }
+
+  .budget-share-pct {
+    color: #111 !important;
+    font-size: 0.9rem !important;
+    text-align: left !important;
+  }
+
+  #budget-table tbody.is-hovering tr {
+    opacity: 1 !important;
   }
 
   .tag {

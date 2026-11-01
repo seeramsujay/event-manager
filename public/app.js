@@ -286,92 +286,186 @@ const PIE_COLORS = [
   "#8a5300",
 ];
 
-function renderBudgetPie(items, currency) {
+function renderBudget(budget) {
   const svg = document.getElementById("budget-pie");
-  if (!svg) return;
-  svg.replaceChildren();
+  const tableBody = document.querySelector("#budget-table tbody");
+  if (!svg || !tableBody) return;
 
-  const totalPercent = items.reduce((sum, item) => sum + item.percent, 0);
-  if (totalPercent <= 0) return;
+  svg.replaceChildren();
+  tableBody.replaceChildren();
+
+  const totalPercent = budget.items.reduce((sum, item) => sum + item.percent, 0);
+  const max = Math.max(...budget.items.map((item) => item.percent));
+
+  document.getElementById("budget-meta").textContent =
+    `Budget tier: ${budget.tier}. Categories you prioritized are marked; a contingency reserve covers surprises.`;
 
   const cx = 60;
   const cy = 60;
-  const r = 48;
-  const innerR = 24;
+  const r = 50;
+  const innerR = 30;
   let currentAngle = -Math.PI / 2;
   const ns = "http://www.w3.org/2000/svg";
 
-  items.forEach((item, index) => {
-    if (item.percent <= 0) return;
+  const sliceElements = [];
+  const rowElements = [];
 
-    const sliceAngle = (item.percent / totalPercent) * 2 * Math.PI;
-    const endAngle = currentAngle + sliceAngle;
-    const path = document.createElementNS(ns, "path");
+  // Center group inside the donut hole
+  const centerGroup = document.createElementNS(ns, "g");
+  centerGroup.setAttribute("class", "pie-center-group");
+
+  const centerSub = document.createElementNS(ns, "text");
+  centerSub.setAttribute("x", String(cx));
+  centerSub.setAttribute("y", "48");
+  centerSub.setAttribute("text-anchor", "middle");
+  centerSub.setAttribute("class", "pie-center-sub");
+  centerSub.textContent = "TOTAL BUDGET";
+  centerGroup.append(centerSub);
+
+  const centerAmount = document.createElementNS(ns, "text");
+  centerAmount.setAttribute("x", String(cx));
+  centerAmount.setAttribute("y", "63");
+  centerAmount.setAttribute("text-anchor", "middle");
+  centerAmount.setAttribute("class", "pie-center-label");
+  centerAmount.textContent = formatMoney(budget.total, budget.currency);
+  centerGroup.append(centerAmount);
+
+  const centerShare = document.createElementNS(ns, "text");
+  centerShare.setAttribute("x", String(cx));
+  centerShare.setAttribute("y", "74");
+  centerShare.setAttribute("text-anchor", "middle");
+  centerShare.setAttribute("class", "pie-center-share");
+  centerShare.textContent = "";
+  centerGroup.append(centerShare);
+
+  function updateCenter(subText, amountText, shareText = "") {
+    centerSub.textContent = subText.length > 13 ? `${subText.slice(0, 12)}…` : subText;
+    centerAmount.textContent = amountText;
+    centerShare.textContent = shareText;
+
+    const len = amountText.length;
+    if (len > 12) {
+      centerAmount.setAttribute("font-size", "8.5px");
+    } else if (len > 9) {
+      centerAmount.setAttribute("font-size", "9.5px");
+    } else {
+      centerAmount.setAttribute("font-size", "11px");
+    }
+  }
+
+  function setHover(idx) {
+    if (idx === null || idx === undefined || idx < 0 || idx >= budget.items.length) {
+      svg.classList.remove("is-hovering");
+      tableBody.classList.remove("is-hovering");
+      sliceElements.forEach((s) => s.classList.remove("is-active"));
+      rowElements.forEach((r) => r.classList.remove("is-active"));
+      updateCenter("TOTAL BUDGET", formatMoney(budget.total, budget.currency), "");
+    } else {
+      const item = budget.items[idx];
+      svg.classList.add("is-hovering");
+      tableBody.classList.add("is-hovering");
+      sliceElements.forEach((s, sIdx) => {
+        s.classList.toggle("is-active", sIdx === idx);
+      });
+      rowElements.forEach((r, rIdx) => {
+        r.classList.toggle("is-active", rIdx === idx);
+      });
+      updateCenter(item.label.toUpperCase(), formatMoney(item.amount, budget.currency), `${item.percent}%`);
+    }
+  }
+
+  svg.addEventListener("pointerleave", () => setHover(null));
+  tableBody.addEventListener("pointerleave", () => setHover(null));
+
+  budget.items.forEach((item, index) => {
     const color = PIE_COLORS[index % PIE_COLORS.length];
 
-    if (item.percent >= 99.9) {
-      path.setAttribute("d", `M ${cx} ${cy - r} A ${r} ${r} 0 1 1 ${cx - 0.01} ${cy - r} Z`);
-    } else {
-      const x1 = cx + r * Math.cos(currentAngle);
-      const y1 = cy + r * Math.sin(currentAngle);
-      const x2 = cx + r * Math.cos(endAngle);
-      const y2 = cy + r * Math.sin(endAngle);
+    // 1. Table row with share number cleanly on the side outside the bar
+    const row = el("tr", { className: "budget-row", "data-index": String(index) }, [
+      el("th", { scope: "row" }, [
+        item.label,
+        item.prioritized ? el("span", { className: "tag", text: "priority" }) : null,
+      ]),
+      el("td", { className: "budget-share-cell" }, [
+        el("div", { className: "bar" }, [
+          el("span", {
+            style: {
+              width: `${(item.percent / max) * 6}rem`,
+              backgroundColor: color,
+            },
+            "aria-hidden": "true",
+          }),
+        ]),
+        el("span", { className: "budget-share-pct", "aria-label": `${item.percent} percent` }, `${item.percent}%`),
+      ]),
+      el("td", { className: "num", text: formatMoney(item.amount, budget.currency) }),
+    ]);
 
-      const ix1 = cx + innerR * Math.cos(endAngle);
-      const iy1 = cy + innerR * Math.sin(endAngle);
-      const ix2 = cx + innerR * Math.cos(currentAngle);
-      const iy2 = cy + innerR * Math.sin(currentAngle);
+    row.addEventListener("pointerenter", () => setHover(index));
+    row.addEventListener("pointerleave", () => setHover(null));
+    row.addEventListener("focusin", () => setHover(index));
+    row.addEventListener("focusout", () => setHover(null));
 
-      const largeArc = sliceAngle > Math.PI ? 1 : 0;
-      const d = [
-        `M ${x1.toFixed(2)} ${y1.toFixed(2)}`,
-        `A ${r} ${r} 0 ${largeArc} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`,
-        `L ${ix1.toFixed(2)} ${iy1.toFixed(2)}`,
-        `A ${innerR} ${innerR} 0 ${largeArc} 0 ${ix2.toFixed(2)} ${iy2.toFixed(2)}`,
-        "Z",
-      ].join(" ");
-      path.setAttribute("d", d);
+    rowElements.push(row);
+    tableBody.append(row);
+
+    // 2. SVG Donut Slice
+    if (totalPercent > 0 && item.percent > 0) {
+      const sliceAngle = (item.percent / totalPercent) * 2 * Math.PI;
+      const endAngle = currentAngle + sliceAngle;
+      const path = document.createElementNS(ns, "path");
+
+      if (item.percent >= 99.9) {
+        path.setAttribute(
+          "d",
+          `M ${cx} ${cy - r} A ${r} ${r} 0 1 1 ${cx - 0.01} ${cy - r} L ${cx - 0.01} ${cy - innerR} A ${innerR} ${innerR} 0 1 0 ${cx} ${cy - innerR} Z`
+        );
+      } else {
+        const x1 = cx + r * Math.cos(currentAngle);
+        const y1 = cy + r * Math.sin(currentAngle);
+        const x2 = cx + r * Math.cos(endAngle);
+        const y2 = cy + r * Math.sin(endAngle);
+
+        const ix1 = cx + innerR * Math.cos(endAngle);
+        const iy1 = cy + innerR * Math.sin(endAngle);
+        const ix2 = cx + innerR * Math.cos(currentAngle);
+        const iy2 = cy + innerR * Math.sin(currentAngle);
+
+        const largeArc = sliceAngle > Math.PI ? 1 : 0;
+        const d = [
+          `M ${x1.toFixed(2)} ${y1.toFixed(2)}`,
+          `A ${r} ${r} 0 ${largeArc} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`,
+          `L ${ix1.toFixed(2)} ${iy1.toFixed(2)}`,
+          `A ${innerR} ${innerR} 0 ${largeArc} 0 ${ix2.toFixed(2)} ${iy2.toFixed(2)}`,
+          "Z",
+        ].join(" ");
+        path.setAttribute("d", d);
+      }
+
+      path.setAttribute("fill", color);
+      path.setAttribute("stroke", "var(--surface)");
+      path.setAttribute("stroke-width", "1.5");
+      path.setAttribute("class", "pie-slice");
+      path.setAttribute("tabindex", "0");
+      path.setAttribute("role", "graphics-symbol");
+      path.setAttribute("aria-label", `${item.label}: ${item.percent}% (${formatMoney(item.amount, budget.currency)})`);
+
+      const title = document.createElementNS(ns, "title");
+      title.textContent = `${item.label}: ${item.percent}% (${formatMoney(item.amount, budget.currency)})`;
+      path.append(title);
+
+      path.addEventListener("pointerenter", () => setHover(index));
+      path.addEventListener("pointerleave", () => setHover(null));
+      path.addEventListener("focus", () => setHover(index));
+      path.addEventListener("blur", () => setHover(null));
+
+      sliceElements.push(path);
+      svg.append(path);
+      currentAngle = endAngle;
     }
-
-    path.setAttribute("fill", color);
-    path.setAttribute("stroke", "var(--surface)");
-    path.setAttribute("stroke-width", "1.5");
-    path.setAttribute("class", "pie-slice");
-
-    const title = document.createElementNS(ns, "title");
-    title.textContent = `${item.label}: ${item.percent}% (${formatMoney(item.amount, currency)})`;
-    path.append(title);
-
-    svg.append(path);
-    currentAngle = endAngle;
   });
 
-  const centerText = document.createElementNS(ns, "text");
-  centerText.setAttribute("x", String(cx));
-  centerText.setAttribute("y", String(cy + 4));
-  centerText.setAttribute("text-anchor", "middle");
-  centerText.setAttribute("class", "pie-center-label");
-  centerText.textContent = "100%";
-  svg.append(centerText);
-}
-
-function renderBudget(budget) {
-  renderBudgetPie(budget.items, budget.currency);
-  const max = Math.max(...budget.items.map((item) => item.percent));
-  document.getElementById("budget-meta").textContent =
-    `Budget tier: ${budget.tier}. Categories you prioritized are marked; a contingency reserve covers surprises.`;
-  document.querySelector("#budget-table tbody").replaceChildren(
-    ...budget.items.map((item) =>
-      el("tr", {}, [
-        el("th", { scope: "row" }, [item.label, item.prioritized ? el("span", { className: "tag", text: "priority" }) : null]),
-        el("td", {}, el("div", { className: "bar" }, [
-          el("span", { style: { width: `${(item.percent / max) * 6}rem` }, "aria-hidden": "true" }),
-          `${item.percent}%`,
-        ])),
-        el("td", { className: "num", text: formatMoney(item.amount, budget.currency) }),
-      ]),
-    ),
-  );
+  svg.append(centerGroup);
 }
 
 function renderTimeline(timeline) {

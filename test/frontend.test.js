@@ -235,7 +235,7 @@ describe("plan rendering", () => {
     window.close();
   });
 
-  test("budget pie chart renders SVG slices with accessible titles and center label", async () => {
+  test("budget pie chart renders SVG slices with accessible titles, center amount, and hover interactions", async () => {
     const window = await openPage();
     const page = driver(window);
     page.set("date", futureDate(60));
@@ -247,7 +247,26 @@ describe("plan rendering", () => {
     assert.ok(slices.every((s) => s.getAttribute("d") && s.getAttribute("fill")));
     const center = svg.querySelector("text.pie-center-label");
     assert.ok(center);
-    assert.equal(center.textContent, "100%");
+    assert.equal(center.textContent, "$20,000");
+
+    // Slices and rows have share numbers on the side
+    const sharePcts = [...page.doc.querySelectorAll("#budget-table .budget-share-pct")];
+    assert.ok(sharePcts.length > 5);
+    assert.ok(sharePcts.every((p) => /%$/.test(p.textContent.trim())));
+
+    // Hovering a slice updates center amount and highlights active row
+    slices[0].dispatchEvent(new window.Event("pointerenter", { bubbles: true }));
+    assert.ok(svg.classList.contains("is-hovering"));
+    assert.ok(slices[0].classList.contains("is-active"));
+    const tbody = page.$("#budget-table tbody");
+    assert.ok(tbody.classList.contains("is-hovering"));
+    assert.notEqual(center.textContent, "$20,000");
+
+    // Leaving restores total
+    slices[0].dispatchEvent(new window.Event("pointerleave", { bubbles: true }));
+    assert.equal(svg.classList.contains("is-hovering"), false);
+    assert.equal(center.textContent, "$20,000");
+
     window.close();
   });
 
