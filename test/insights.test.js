@@ -31,6 +31,13 @@ describe("insight rules", () => {
     ["Accessibility first", { considerations: ["accessibility"] }, "info"],
     ["Lower-waste event", { considerations: ["sustainability"] }, "info"],
     ["Lower-waste event", {}, null],
+    ["Micro-event advantage: Restaurant private dining", { guestCount: 45, setting: "indoor" }, "info"],
+    ["Micro-event advantage: Restaurant private dining", { guestCount: 51, setting: "indoor" }, null],
+    ["Micro-event advantage: Restaurant private dining", { guestCount: 40, setting: "outdoor" }, null],
+    ["Contract defense: Teardown & service fees", { setting: "indoor" }, "info"],
+    ["Contract defense: Teardown & service fees", { setting: "outdoor" }, null],
+    ["Contract defense: Permits & waste removal", { setting: "outdoor" }, "info"],
+    ["Contract defense: Permits & waste removal", { setting: "indoor" }, null],
   ];
   for (const [title, overrides, level] of cases) {
     test(`${title} → ${level ?? "absent"} for ${JSON.stringify(overrides)}`, () => {

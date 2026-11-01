@@ -111,6 +111,26 @@ const rules = [
             : `Sourcing local regional vendors and seasonal catering in ${ctx.location} can reduce travel surcharges and highlight regional flavors.`,
         }
       : null,
+  ({ ctx }) =>
+    ctx.guestCount <= 50 && ctx.setting !== "outdoor"
+      ? {
+          level: "info",
+          title: "Micro-event advantage: Restaurant private dining",
+          detail: "For 50 or fewer guests, a restaurant private dining room provides turnkey commercial kitchens, waitstaff, furniture and cleanup covered by your food/beverage minimum spend, avoiding separate hall and rental fees.",
+        }
+      : null,
+  ({ ctx }) =>
+    ctx.setting !== "outdoor"
+      ? {
+          level: "info",
+          title: "Contract defense: Teardown & service fees",
+          detail: "Venues often bill overtime at $250–$1,000/hr if teardown exceeds contracted limits, and administrative fees (20–25%) are rarely distributed to floor staff. Build a 90-minute teardown buffer and confirm gratuity terms in writing.",
+        }
+      : {
+          level: "info",
+          title: "Contract defense: Permits & waste removal",
+          detail: "Outdoor venues often require separate noise and alcohol permits, portable power, and mandatory off-site trash removal. Confirm whether the rental company or caterer is contractually responsible for end-of-night cleanup.",
+        },
 ];
 
 /** Minimum USD-equivalent food spend per guest before we warn. */
