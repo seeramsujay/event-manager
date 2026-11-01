@@ -6,7 +6,7 @@ import { z } from "zod";
 import { BUDGET_TIPS, EVENT_PROFILES } from "../planner/catalog.js";
 import { TtlCache } from "../lib/ttlCache.js";
 
-export const DEFAULT_MODEL = "gemini-2.0-flash-lite";
+export const DEFAULT_MODEL = "gemini-2.5-flash-lite";
 const MAX_ITEMS = 5;
 
 /**

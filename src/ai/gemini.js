@@ -18,8 +18,8 @@ export function createGeminiClient({ apiKey, timeout = 30_000, fetchFn = globalT
     apiKey,
     timeout,
 
-    async generateContent({ model = "gemini-2.0-flash-lite", systemPrompt, prompt, schema }) {
-      const targetModel = model.startsWith("gemini") ? model : "gemini-2.0-flash-lite";
+    async generateContent({ model = "gemini-2.5-flash-lite", systemPrompt, prompt, schema }) {
+      const targetModel = model.startsWith("gemini") ? model : "gemini-2.5-flash-lite";
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(targetModel)}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
       const body = {

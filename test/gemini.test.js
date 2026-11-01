@@ -50,13 +50,13 @@ describe("createGeminiClient", () => {
 
     const client = createGeminiClient({ apiKey: "test-gemini-key", fetchFn: mockFetch });
     const text = await client.generateContent({
-      model: "gemini-2.0-flash-lite",
+      model: "gemini-2.5-flash-lite",
       systemPrompt: "You are an assistant",
       prompt: "Hello",
       schema: { type: "OBJECT" },
     });
 
-    assert.ok(calledUrl.includes("models/gemini-2.0-flash-lite:generateContent"));
+    assert.ok(calledUrl.includes("models/gemini-2.5-flash-lite:generateContent"));
     assert.ok(calledUrl.includes("key=test-gemini-key"));
     assert.equal(calledBody.systemInstruction.parts[0].text, "You are an assistant");
     assert.equal(calledBody.contents[0].parts[0].text, "Hello");
@@ -78,7 +78,7 @@ describe("createGeminiClient", () => {
 
     const client = createGeminiClient({ apiKey: "key", fetchFn: mockFetch });
     await client.generateContent({ model: "other-model", systemPrompt: "sys", prompt: "user" });
-    assert.ok(calledUrl.includes("models/gemini-2.0-flash-lite:generateContent"));
+    assert.ok(calledUrl.includes("models/gemini-2.5-flash-lite:generateContent"));
   });
 
   test("throws formatted error on non-ok API response", async () => {
@@ -142,7 +142,7 @@ describe("Gemini ideas generation integration", () => {
     });
 
     const client = createGeminiClient({ apiKey: "gemini-key", fetchFn: mockFetch });
-    const service = createIdeasService({ client, model: "gemini-2.0-flash-lite" });
+    const service = createIdeasService({ client, model: "gemini-2.5-flash-lite" });
     assert.equal(service.enabled, true);
 
     const input = request({ vibe: "relaxed", notes: "Mocktail bar" });
