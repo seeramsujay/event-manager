@@ -161,7 +161,7 @@ export function curatedIdeas(input, plan) {
   const ideas = EVENT_PROFILES[input.eventType].ideas;
   const words = [input.location, input.vibe, input.setting, ...input.considerations.map((c) => CONSIDERATION_WORDS[c])].filter(Boolean).join(" ").toLowerCase();
   const score = (theme) => theme.keywords.filter((keyword) => words.includes(keyword)).length;
-  const themes = [...ideas.themes]
+  let themes = [...ideas.themes]
     .sort((a, b) => score(b) - score(a))
     .slice(0, 3)
     .map(({ name, description }) => ({ name, description }));
@@ -170,6 +170,17 @@ export function curatedIdeas(input, plan) {
   if (input.considerations.includes("alcohol-free")) {
     food = food.filter((idea) => !/drink|cocktail/i.test(idea));
     if (!food.some((idea) => /mocktail/i.test(idea))) food = [...food, "A colorful mocktail bar"];
+  }
+
+  if (input.location) {
+    themes = [
+      {
+        name: `${input.location} Signature Showcase`,
+        description: `Highlight regional architecture, locally sourced botanicals, and celebrated community flavors authentic to ${input.location}.`,
+      },
+      ...themes.slice(0, 2),
+    ];
+    food = [`Locally inspired ${input.location} culinary tasting station`, ...food.slice(0, 4)];
   }
 
   const personalTouch = input.location

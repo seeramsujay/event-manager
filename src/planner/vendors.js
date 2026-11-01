@@ -35,7 +35,13 @@ export function buildVendorChecklist(profile, ctx, { eventDate, leadDays, priori
         matchesPriority,
         bookBy: toIsoDate(addDays(eventDate, -Math.round(idealDays * ctx.leadRatio))),
         bookNow: idealDays > leadDays,
-        tip: ctx.tier === "lean" && priority === "optional" ? `${tip} On a lean budget, consider a DIY or borrowed alternative.` : tip,
+        tip: (() => {
+          let t = ctx.tier === "lean" && priority === "optional" ? `${tip} On a lean budget, consider a DIY or borrowed alternative.` : tip;
+          if (ctx.location && (vendor.id === "venue" || vendor.category === "venue")) {
+            t = `${t} In ${ctx.location}, confirm municipal sound curfew laws and parking availability.`;
+          }
+          return t;
+        })(),
       };
     })
     .sort((a, b) =>

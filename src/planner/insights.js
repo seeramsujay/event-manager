@@ -112,6 +112,14 @@ const rules = [
         }
       : null,
   ({ ctx }) =>
+    ctx.location
+      ? {
+          level: "info",
+          title: `Regional vendor & municipal market: ${ctx.location}`,
+          detail: `For events in ${ctx.location}, check vendor travel radius limits (often 25–30 miles before mileage applies) and confirm whether urban venues enforce municipal sound cutoff curfews (typically 10 PM in residential zones).`,
+        }
+      : null,
+  ({ ctx }) =>
     ctx.guestCount <= 50 && ctx.setting !== "outdoor"
       ? {
           level: "info",

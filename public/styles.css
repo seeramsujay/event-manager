@@ -488,7 +488,77 @@ button[aria-disabled="true"] { opacity: 0.6; cursor: not-allowed; }
 
 .results-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1rem; }
 .results-header h2 { margin: 0; }
-.results-actions { display: flex; gap: 0.5rem; }
+.results-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+
+/* Plan explanation */
+.explanation-card {
+  margin-bottom: 1.25rem;
+  border-left: 4px solid var(--accent);
+}
+
+.explanation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.explanation-header h3 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.explanation-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: 0.9rem;
+  margin-top: 1rem;
+}
+
+.explanation-card-item {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.85rem;
+  background: var(--bg);
+}
+
+.explanation-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.explanation-card-head h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.explanation-points {
+  margin: 0;
+  padding-left: 1.15rem;
+  font-size: 0.9rem;
+  display: grid;
+  gap: 0.4rem;
+  color: var(--text);
+  line-height: 1.45;
+}
+
+.close-btn {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.badge-lean { background: var(--info-soft); color: var(--info); border: 1px solid var(--info); }
+.badge-moderate { background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent); }
+.badge-premium { background: var(--warning-soft); color: var(--warning); border: 1px solid var(--warning); }
+.badge-accent { background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent); }
+.badge-warning { background: var(--warning-soft); color: var(--warning); border: 1px solid var(--warning); }
+.badge-info { background: var(--info-soft); color: var(--info); border: 1px solid var(--info); }
+.badge-critical { background: var(--critical-soft); color: var(--critical); border: 1px solid var(--critical); }
 
 .summary {
   display: grid;
@@ -736,6 +806,7 @@ tbody tr:last-child { font-weight: 700; }
   #form-card,
   .skip-link,
   .results-actions,
+  .close-btn,
   .site-footer,
   .status,
   .a11y-panel {
@@ -1056,4 +1127,127 @@ tbody tr:last-child { font-weight: 700; }
     border: 1px solid #ddd !important;
     background: #fbfbfb !important;
   }
+}
+
+/* Questions & AI Copilot */
+.questions-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.questions-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.questions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  gap: 0.9rem;
+  margin-top: 1rem;
+}
+.question-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.9rem;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.question-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.2rem;
+}
+.question-card-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin: 0;
+}
+.question-text {
+  font-weight: 600;
+  font-size: 0.92rem;
+  margin: 0;
+  color: var(--text);
+  line-height: 1.4;
+}
+.question-tip {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin: 0;
+  line-height: 1.4;
+}
+.agent-parser-panel {
+  margin-top: 1rem;
+  border: 1px dashed var(--accent);
+  border-radius: 8px;
+  padding: 1rem;
+  background: var(--surface);
+}
+.parser-box {
+  display: grid;
+  gap: 0.6rem;
+}
+.parser-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.6rem;
+  font-family: inherit;
+  font-size: 0.85rem;
+  background: var(--bg);
+  color: var(--text);
+  resize: vertical;
+}
+.parser-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.agent-brief-card {
+  margin-top: 1.25rem;
+  border: 1px solid var(--accent);
+  border-left: 4px solid var(--accent);
+  border-radius: 8px;
+  padding: 1rem;
+  background: var(--surface);
+}
+.agent-brief-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+.agent-brief-header h4 {
+  margin: 0;
+  font-size: 1rem;
+}
+.agent-brief-body {
+  display: grid;
+  gap: 0.75rem;
+}
+.agent-brief-item h5 {
+  margin: 0 0 0.2rem 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+.agent-brief-item p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text);
+  line-height: 1.45;
+}
+.agent-brief-item ul {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 0.9rem;
 }

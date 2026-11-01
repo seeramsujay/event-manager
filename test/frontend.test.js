@@ -449,7 +449,117 @@ describe("plan export", () => {
     const window = await openPage();
     window.URL.createObjectURL = () => { throw new Error("must not be called"); };
     window.document.getElementById("download-btn").click();
+    window.document.getElementById("download-md-btn").click();
+    window.document.getElementById("download-json-btn").click();
     assert.equal(window.document.getElementById("status").textContent, "");
+    window.close();
+  });
+
+  test("downloads the plan as Markdown with tables and checklist", async () => {
+    const window = await openPage();
+    const page = driver(window);
+    page.set("date", futureDate(60));
+    page.set("eventName", "Sam & Alex: Garden Wedding!");
+    page.set("location", "Austin, TX");
+    await page.submitAndWait();
+
+    let blob;
+    let link;
+    window.URL.createObjectURL = (value) => { blob = value; return "blob:plan-md"; };
+    window.URL.revokeObjectURL = () => {};
+    const click = window.HTMLAnchorElement.prototype.click;
+    window.HTMLAnchorElement.prototype.click = function () { link = this; };
+    try {
+      page.$("#download-md-btn").click();
+    } finally {
+      window.HTMLAnchorElement.prototype.click = click;
+    }
+    assert.equal(link.getAttribute("download"), "sam-alex-garden-wedding.md");
+    assert.match(page.text("#status"), /Markdown/);
+
+    const mdText = await new Promise((resolve) => {
+      const reader = new window.FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.readAsText(blob);
+    });
+    assert.match(mdText, /^# Sam & Alex: Garden Wedding!/);
+    assert.match(mdText, /## 💰 Budget Breakdown/);
+    assert.match(mdText, /## 🗓️ Timeline & Milestones/);
+    assert.match(mdText, /## ✅ Vendor Checklist/);
+    assert.match(mdText, /Google Maps/);
+    window.close();
+  });
+
+  test("downloads the plan as structured JSON", async () => {
+    const window = await openPage();
+    const page = driver(window);
+    page.set("date", futureDate(60));
+    page.set("eventName", "Austin Tech Gala");
+    await page.submitAndWait();
+
+    let blob;
+    let link;
+    window.URL.createObjectURL = (value) => { blob = value; return "blob:plan-json"; };
+    window.URL.revokeObjectURL = () => {};
+    const click = window.HTMLAnchorElement.prototype.click;
+    window.HTMLAnchorElement.prototype.click = function () { link = this; };
+    try {
+      page.$("#download-json-btn").click();
+    } finally {
+      window.HTMLAnchorElement.prototype.click = click;
+    }
+    assert.equal(link.getAttribute("download"), "austin-tech-gala.json");
+    assert.match(page.text("#status"), /JSON/);
+
+    const jsonText = await new Promise((resolve) => {
+      const reader = new window.FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.readAsText(blob);
+    });
+    const parsed = JSON.parse(jsonText);
+    assert.equal(parsed.app, "Plan Together AI");
+    assert.equal(parsed.plan.summary.eventName, "Austin Tech Gala");
+    window.close();
+  });
+
+  test("change constraints button scrolls to form card and focuses heading", async () => {
+    const window = await openPage();
+    const page = driver(window);
+    page.set("date", futureDate(60));
+    await page.submitAndWait();
+
+    let scrolled = false;
+    page.$("#form-card").scrollIntoView = () => { scrolled = true; };
+    page.$("#change-constraints-btn").click();
+    assert.equal(scrolled, true);
+    assert.equal(window.document.activeElement, page.$("#form-heading"));
+    assert.match(page.text("#status"), /adjust your constraints/);
+    window.close();
+  });
+
+  test("explain this plan toggles explanation cards and close button dismisses it", async () => {
+    const window = await openPage();
+    const page = driver(window);
+    page.set("date", futureDate(60));
+    page.set("guestCount", "45");
+    await page.submitAndWait();
+
+    const explanationPanel = page.$("#plan-explanation");
+    const explainBtn = page.$("#explain-plan-btn");
+    assert.equal(explanationPanel.hidden, true);
+    assert.equal(explainBtn.getAttribute("aria-expanded"), "false");
+
+    explainBtn.click();
+    assert.equal(explanationPanel.hidden, false);
+    assert.equal(explainBtn.getAttribute("aria-expanded"), "true");
+    assert.match(explainBtn.textContent, /Hide explanation/);
+    assert.ok(explanationPanel.querySelectorAll(".explanation-card-item").length >= 3);
+    assert.match(page.text("#explanation-content"), /Budget Architecture/);
+    assert.match(page.text("#explanation-content"), /private dining room/i);
+
+    page.$("#close-explanation-btn").click();
+    assert.equal(explanationPanel.hidden, true);
+    assert.equal(explainBtn.getAttribute("aria-expanded"), "false");
     window.close();
   });
 });

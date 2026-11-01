@@ -234,11 +234,24 @@
       <div class="results-header">
         <h2 id="results-heading" tabindex="-1">Your plan</h2>
         <div class="results-actions">
+          <button type="button" class="secondary" id="change-constraints-btn" aria-label="Change event constraints">✏️ Change constraints</button>
+          <button type="button" class="secondary" id="explain-plan-btn" aria-expanded="false" aria-controls="plan-explanation">💡 Explain this plan</button>
+          <button type="button" class="secondary" id="download-md-btn">Download Markdown</button>
+          <button type="button" class="secondary" id="download-json-btn">Download JSON</button>
           <button type="button" class="secondary" id="download-btn">Download as text</button>
           <button type="button" class="secondary" id="print-btn">Print plan</button>
         </div>
       </div>
       <div id="summary" class="summary"></div>
+
+      <section class="card explanation-card" id="plan-explanation" aria-labelledby="explanation-heading" hidden>
+        <div class="explanation-header">
+          <h3 id="explanation-heading" tabindex="-1">💡 Plan explanation &amp; strategic rationale</h3>
+          <button type="button" class="secondary close-btn" id="close-explanation-btn" aria-label="Close plan explanation">✕ Close</button>
+        </div>
+        <p class="hint" id="explanation-meta">Strategic rationale for how your budget, timeline, and vendor priorities were calculated.</p>
+        <div class="explanation-grid" id="explanation-content"></div>
+      </section>
 
       <section class="card" aria-labelledby="insights-heading" id="insights-section">
         <h3 id="insights-heading">Things to know</h3>
@@ -281,6 +294,38 @@
         <h3 id="ideas-heading">Personalized ideas</h3>
         <p id="ideas-meta" class="hint"></p>
         <div id="ideas"></div>
+      </section>
+
+      <section class="card questions-section" id="questions-section" aria-labelledby="questions-heading">
+        <div class="questions-header">
+          <h3 id="questions-heading">📋 Strategic Discovery Questions &amp; AI Copilot</h3>
+          <div class="questions-actions">
+            <button type="button" class="secondary" id="copy-agent-prompt-btn" aria-label="Copy prompt for AI agent">📋 Copy Agent Prompt</button>
+            <button type="button" class="secondary" id="toggle-agent-parser-btn" aria-expanded="false" aria-controls="agent-parser-panel">📥 Import Agent Answers</button>
+          </div>
+        </div>
+        <p class="hint">Answer these key questions to refine food tastes, venue aesthetics, and contract terms. You can copy the structured prompt to your AI assistant (ChatGPT, Claude, Gemini) and paste its recommendations back here.</p>
+        <div id="questions-list" class="questions-grid"></div>
+
+        <div id="agent-parser-panel" class="agent-parser-panel" hidden>
+          <div class="parser-box">
+            <label for="agent-response-input" class="parser-label"><strong>Paste Agent Response (JSON or Markdown)</strong></label>
+            <textarea id="agent-response-input" class="parser-textarea" rows="6" placeholder="Paste the output from your AI agent here..."></textarea>
+            <div class="parser-actions">
+              <button type="button" id="apply-agent-answers-btn">Apply Answers to Plan</button>
+              <button type="button" class="secondary" id="cancel-parser-btn">Cancel</button>
+            </div>
+            <p id="parser-error" class="error" hidden></p>
+          </div>
+        </div>
+
+        <div id="agent-brief-display" class="agent-brief-card" hidden>
+          <div class="agent-brief-header">
+            <h4>⭐ AI Agent Strategy Brief (Integrated)</h4>
+            <span class="tag badge-accent">ACTIVE STRATEGY</span>
+          </div>
+          <div id="agent-brief-body" class="agent-brief-body"></div>
+        </div>
       </section>
 
       <section class="card contract-defense-section" aria-labelledby="contract-heading">

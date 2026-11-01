@@ -5,6 +5,7 @@ import { daysBetween, parseIsoDate, startOfUtcDay } from "./dates.js";
 import { buildInsights } from "./insights.js";
 import { buildTimeline } from "./timeline.js";
 import { buildVendorChecklist } from "./vendors.js";
+import { buildQuestions } from "./questions.js";
 
 /**
  * @typedef {object} BudgetItem
@@ -125,5 +126,6 @@ export function buildPlan(input, { now = new Date() } = {}) {
     timeline,
     vendors,
     insights,
+    questions: buildQuestions(input, ctx, budget),
   };
 }
