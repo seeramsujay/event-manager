@@ -491,6 +491,14 @@ function planToText(plan) {
     lines.push(`${title}:`);
     for (const item of items) lines.push(`- ${item}`);
   }
+  lines.push(
+    "",
+    "CONTRACT DEFENSE & NEGOTIATION CHECKLIST",
+    "- Venue: Confirm if 20-25% service fee includes staff tips, and verify teardown overtime rates ($250-$1,000/hr).",
+    "- Venue: Check 'broom-clean' clauses and off-site trash disposal obligations before signing.",
+    "- Catering & Bar: Clarify tip-jar policies, bartender-to-guest ratios (1:50 recommended), and surplus bottle returns.",
+    "- Photography: Ensure lead photographer is explicitly named with un-watermarked high-res rights.",
+  );
   lines.push("", ideas.ideas.personalTouch, "", "Estimates are guidance only. Confirm prices, permits and requirements locally.");
   return lines.join("\n");
 }

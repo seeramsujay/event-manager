@@ -251,6 +251,17 @@ describe("plan rendering", () => {
     window.close();
   });
 
+  test("contract defense and negotiation guide is rendered in results", async () => {
+    const window = await openPage();
+    const page = driver(window);
+    page.set("date", futureDate(60));
+    await page.submitAndWait();
+    const section = page.$(".contract-defense-section");
+    assert.ok(section);
+    assert.equal(section.querySelectorAll(".contract-guide-card").length, 3);
+    window.close();
+  });
+
   test("AI text is rendered as text, never as markup", async () => {
     const window = await openPage();
     const page = driver(window);
@@ -425,7 +436,7 @@ describe("plan export", () => {
       reader.readAsText(blob);
     });
     assert.match(text, /^Sam & Alex: Garden Wedding!\n=+\n/);
-    for (const heading of ["THINGS TO KNOW", "BUDGET BREAKDOWN", "TIMELINE", "VENDOR CHECKLIST", "IDEAS (AI-personalized)"]) {
+    for (const heading of ["THINGS TO KNOW", "BUDGET BREAKDOWN", "TIMELINE", "VENDOR CHECKLIST", "IDEAS (AI-personalized)", "CONTRACT DEFENSE & NEGOTIATION CHECKLIST"]) {
       assert.ok(text.includes(heading), heading);
     }
     assert.match(text, /Food & drinks \(priority\)/);

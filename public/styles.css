@@ -670,6 +670,40 @@ tbody tr:last-child { font-weight: 700; }
   .btn-hero, .hero-arrow { transition: none; }
 }
 
+/* Contract defense guide */
+.contract-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1.25rem;
+  margin-top: 1rem;
+}
+
+.contract-guide-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.25rem;
+  font-size: 0.92rem;
+}
+
+.contract-guide-card h4 {
+  margin: 0 0 0.65rem;
+  font-size: 1.05rem;
+  color: var(--accent);
+}
+
+.contract-guide-card ul {
+  margin: 0;
+  padding-left: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.contract-guide-card li {
+  line-height: 1.45;
+}
+
 @media print {
   @page {
     margin: 1.2cm 1cm;
@@ -1013,5 +1047,17 @@ tbody tr:last-child { font-weight: 700; }
 
   .idea-grid > div {
     break-inside: avoid;
+  }
+
+  /* Contract defense guide in print */
+  .contract-guide-grid {
+    display: block !important;
+  }
+  .contract-guide-card {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    margin-bottom: 0.75rem !important;
+    border: 1px solid #ddd !important;
+    background: #fbfbfb !important;
   }
 }
