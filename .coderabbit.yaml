@@ -1,0 +1,19 @@
+# CodeRabbit configuration for event-manager
+version: 2
+language: en-US
+tone_instructions: "Provide strict, thorough, and security-conscious reviews."
+reviews:
+  profile: "assertive"
+  high_level_summary: true
+  poem: false
+  collapse_walkthrough: false
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - "main"
+      - "master"
+chat:
+  auto_reply: true
+knowledge_base:
+  opt_out: false
