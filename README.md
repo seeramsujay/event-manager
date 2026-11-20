@@ -1,3 +1,20 @@
+<p align="center">
+  <img src="assets/logo.svg" alt="event-manager Logo" width="120" height="120" />
+</p>
+
+<h1 align="center">event-manager</h1>
+
+<p align="center">
+  <em>GenAI-powered planning assistant for weddings, birthdays and community events: budgets, timelines, vendor checklists and personalized ideas.</em>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Status-Maintained-success?style=flat-square" alt="Status" />
+  <img src="https://img.shields.io/badge/License-Protected-blue?style=flat-square" alt="License" />
+</p>
+
+---
+
 # Plan Together: GenAI Event Planning Assistant
 
 [![CI](https://github.com/seeramsujay/event-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/seeramsujay/event-manager/actions/workflows/ci.yml)
